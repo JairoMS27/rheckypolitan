@@ -1,5 +1,7 @@
+"use client";
+
 import { useState, useRef } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -34,7 +36,7 @@ export type PostInput = {
 };
 
 export function PostForm({ initial }: { initial: PostInput }) {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user } = useAuth();
   const [data, setData] = useState<PostInput>(initial);
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -100,14 +102,15 @@ export function PostForm({ initial }: { initial: PostInput }) {
           .select()
           .single();
         if (error || !inserted) throw error ?? new Error("No se pudo crear");
-        postId = inserted.id;
+        const newPostId = inserted.id;
+        postId = newPostId;
         if (coverFile) {
-          const cover = await uploadCover(postId);
-          await supabase.from("posts").update({ cover_path: cover }).eq("id", postId);
+          const cover = await uploadCover(newPostId);
+          await supabase.from("posts").update({ cover_path: cover }).eq("id", newPostId);
         }
       }
       toast.success("Guardado");
-      navigate({ to: "/admin/posts" });
+      router.push("/admin/posts");
     } catch (err: any) {
       toast.error(err.message ?? "Error al guardar");
     } finally {
@@ -284,7 +287,7 @@ export function PostForm({ initial }: { initial: PostInput }) {
         <Button type="submit" disabled={saving}>
           {saving ? "Guardando…" : data.id ? "Guardar cambios" : "Publicar noticia"}
         </Button>
-        <Button type="button" variant="outline" onClick={() => navigate({ to: "/admin/posts" })}>
+        <Button type="button" variant="outline" onClick={() => router.push("/admin/posts")}>
           Cancelar
         </Button>
       </div>

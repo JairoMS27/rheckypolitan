@@ -1,4 +1,7 @@
-import { Link } from "@tanstack/react-router";
+"use client";
+
+import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { publicUrl } from "@/lib/storage";
@@ -16,13 +19,7 @@ type Post = {
   author: string | null;
 };
 
-export function SectionLayout({
-  section,
-  intro,
-}: {
-  section: SectionKey;
-  intro?: string;
-}) {
+export function SectionLayout({ section, intro }: { section: SectionKey; intro?: string }) {
   const [posts, setPosts] = useState<Post[] | null>(null);
 
   useEffect(() => {
@@ -43,19 +40,21 @@ export function SectionLayout({
     <div className="min-h-screen bg-background text-foreground">
       <div
         className="h-2 w-full"
-        style={{ backgroundImage: "repeating-linear-gradient(to bottom, #B22234 0 2px, #ffffff 2px 4px)" }}
+        style={{
+          backgroundImage: "repeating-linear-gradient(to bottom, #B22234 0 2px, #ffffff 2px 4px)",
+        }}
         aria-hidden
       />
       <header className="border-b border-foreground">
         <div className="mx-auto grid max-w-[1600px] grid-cols-3 items-center px-6 py-5">
           <Link
-            to="/"
+            href="/"
             className="justify-self-start font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground hover:text-[#B22234]"
           >
             ← Archivo
           </Link>
           <Link
-            to="/"
+            href="/"
             className="justify-self-center font-display text-2xl font-semibold tracking-tight md:text-3xl"
           >
             Rheckypolitan
@@ -69,7 +68,7 @@ export function SectionLayout({
             {SECTIONS.map((s) => (
               <li key={s.key}>
                 <Link
-                  to={s.path}
+                  href={s.path}
                   className={`font-mono text-[10px] uppercase tracking-widest hover:text-[#B22234] ${
                     s.key === section ? "text-foreground" : "text-muted-foreground"
                   }`}
@@ -83,7 +82,9 @@ export function SectionLayout({
       </header>
 
       <main className="mx-auto max-w-[1600px] px-6 py-16 md:py-24">
-        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">★ Sección</span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
+          ★ Sección
+        </span>
         <h1 className="mt-2 font-display text-[clamp(2.5rem,7vw,5.5rem)] font-normal leading-[0.9] tracking-tight">
           {label}.
         </h1>
@@ -105,19 +106,16 @@ export function SectionLayout({
             <ul className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
               {posts.map((p) => (
                 <li key={p.id} className="group">
-                  <Link
-                    to="/noticia/$section/$slug"
-                    params={{ section, slug: p.slug }}
-                    className="block"
-                  >
-                    <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
+                  <Link href={`/noticia/${section}/${p.slug}`} className="block">
+                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
                       {p.cover_path ? (
-                        <img
+                        <Image
                           src={publicUrl(p.cover_path)}
                           alt={p.title}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                           style={{ objectPosition: p.cover_position ?? "50% 50%" }}
-                          loading="lazy"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">

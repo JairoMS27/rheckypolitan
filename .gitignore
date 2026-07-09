@@ -9,8 +9,11 @@ lerna-debug.log*
 
 # Dependencies
 node_modules
+package-lock.json
+pnpm-lock.yaml
 
 # Build output
+.next
 dist
 dist-ssr
 .output
@@ -43,6 +46,10 @@ Thumbs.db
 # Cursor MCP (local tooling)
 mcps/
 terminals/
+.agents/
+agent-tools/
+skills-lock.json
+supabase/.temp/
 
 # Test / coverage
 coverage

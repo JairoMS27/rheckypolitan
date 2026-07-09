@@ -12,20 +12,28 @@ export function useAuth() {
 
   useEffect(() => {
     const loadRoles = async (uid: string) => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", uid);
+      if (error) {
+        console.error("[useAuth] No se pudieron cargar los roles:", error.message);
+        setRoles([]);
+        return;
+      }
       setRoles((data ?? []).map((r) => r.role as AppRole));
     };
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        setTimeout(() => loadRoles(s.user.id), 0);
+        setLoading(true);
+        await loadRoles(s.user.id);
+        setLoading(false);
       } else {
         setRoles([]);
+        setLoading(false);
       }
     });
 

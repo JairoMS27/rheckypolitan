@@ -1,4 +1,6 @@
-import { Link } from "@tanstack/react-router";
+"use client";
+
+import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,7 +30,7 @@ export function UserMenu() {
           data ?? {
             display_name: user.email?.split("@")[0] ?? "Lector",
             avatar_url: null,
-          }
+          },
         );
       });
   }, [user]);
@@ -45,16 +47,13 @@ export function UserMenu() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="h-5 w-16 animate-pulse bg-muted" />
-    );
+    return <div className="h-5 w-16 animate-pulse bg-muted" />;
   }
 
   if (!user || !profile) {
     return (
       <Link
-        to="/auth/login"
-        search={{ redirect: typeof window !== "undefined" ? window.location.pathname : "/" }}
+        href="/login"
         className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground hover:text-[#B22234] transition-colors"
       >
         Iniciar sesión
@@ -72,7 +71,7 @@ export function UserMenu() {
   return (
     <div ref={menuRef} className="relative flex items-center gap-3">
       <Link
-        to="/admin/posts/new"
+        href="/admin/posts/new"
         className="hidden items-center gap-1.5 border border-[#B22234] bg-[#B22234] px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white transition hover:bg-[#8B1A29] hover:border-[#8B1A29] sm:inline-flex"
       >
         <span aria-hidden>✎</span> Publicar artículo
@@ -104,26 +103,24 @@ export function UserMenu() {
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Sesión activa
             </p>
-            <p className="mt-1 text-sm font-medium text-foreground">
-              {profile.display_name}
-            </p>
+            <p className="mt-1 text-sm font-medium text-foreground">{profile.display_name}</p>
           </div>
           <Link
-            to="/admin/posts/new"
+            href="/admin/posts/new"
             onClick={() => setOpen(false)}
             className="block w-full px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-[#B22234] transition hover:bg-muted sm:hidden"
           >
             ✎ Publicar artículo
           </Link>
           <Link
-            to="/admin/posts"
+            href="/admin/posts"
             onClick={() => setOpen(false)}
             className="block w-full px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             Mis artículos
           </Link>
           <Link
-            to="/profile"
+            href="/profile"
             onClick={() => setOpen(false)}
             className="block w-full px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >

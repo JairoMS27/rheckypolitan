@@ -22,6 +22,7 @@ import { Route as ConspiracionRouteImport } from './routes/conspiracion'
 import { Route as ActualidadRouteImport } from './routes/actualidad'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as EmailSuppressionRouteImport } from './routes/email/suppression'
 import { Route as AuthRegisterRouteImport } from './routes/auth.register'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -35,15 +36,11 @@ import { Route as RevistaNumberIndexRouteImport } from './routes/revista.$number
 import { Route as AdminPostsIndexRouteImport } from './routes/admin.posts.index'
 import { Route as RevistaNumberLeerRouteImport } from './routes/revista.$number.leer'
 import { Route as NoticiaSectionSlugRouteImport } from './routes/noticia.$section.$slug'
-import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as EmailQueueProcessRouteImport } from './routes/email/queue/process'
+import { Route as EmailAuthWebhookRouteImport } from './routes/email/auth/webhook'
 import { Route as ApiAdminNotifyIssueRouteImport } from './routes/api/admin.notify-issue'
 import { Route as AdminPostsNewRouteImport } from './routes/admin.posts.new'
 import { Route as AdminIdEditRouteImport } from './routes/admin.$id.edit'
-import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
-import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
-import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
-import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as AdminPostsIdEditRouteImport } from './routes/admin.posts.$id.edit'
 
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
@@ -111,6 +108,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmailSuppressionRoute = EmailSuppressionRouteImport.update({
+  id: '/email/suppression',
+  path: '/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/auth/register',
   path: '/auth/register',
@@ -176,9 +178,14 @@ const NoticiaSectionSlugRoute = NoticiaSectionSlugRouteImport.update({
   path: '/noticia/$section/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
-  id: '/lovable/email/suppression',
-  path: '/lovable/email/suppression',
+const EmailQueueProcessRoute = EmailQueueProcessRouteImport.update({
+  id: '/email/queue/process',
+  path: '/email/queue/process',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailAuthWebhookRoute = EmailAuthWebhookRouteImport.update({
+  id: '/email/auth/webhook',
+  path: '/email/auth/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminNotifyIssueRoute = ApiAdminNotifyIssueRouteImport.update({
@@ -194,34 +201,6 @@ const AdminPostsNewRoute = AdminPostsNewRouteImport.update({
 const AdminIdEditRoute = AdminIdEditRouteImport.update({
   id: '/admin/$id/edit',
   path: '/admin/$id/edit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LovableEmailTransactionalSendRoute =
-  LovableEmailTransactionalSendRouteImport.update({
-    id: '/lovable/email/transactional/send',
-    path: '/lovable/email/transactional/send',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailTransactionalPreviewRoute =
-  LovableEmailTransactionalPreviewRouteImport.update({
-    id: '/lovable/email/transactional/preview',
-    path: '/lovable/email/transactional/preview',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailQueueProcessRoute =
-  LovableEmailQueueProcessRouteImport.update({
-    id: '/lovable/email/queue/process',
-    path: '/lovable/email/queue/process',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
-  id: '/lovable/email/auth/webhook',
-  path: '/lovable/email/auth/webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
-  id: '/lovable/email/auth/preview',
-  path: '/lovable/email/auth/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminPostsIdEditRoute = AdminPostsIdEditRouteImport.update({
@@ -252,21 +231,18 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/email/suppression': typeof EmailSuppressionRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/$id/edit': typeof AdminIdEditRoute
   '/admin/posts/new': typeof AdminPostsNewRoute
   '/api/admin/notify-issue': typeof ApiAdminNotifyIssueRoute
-  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/email/auth/webhook': typeof EmailAuthWebhookRoute
+  '/email/queue/process': typeof EmailQueueProcessRoute
   '/noticia/$section/$slug': typeof NoticiaSectionSlugRoute
   '/revista/$number/leer': typeof RevistaNumberLeerRoute
   '/admin/posts/': typeof AdminPostsIndexRoute
   '/revista/$number/': typeof RevistaNumberIndexRoute
   '/admin/posts/$id/edit': typeof AdminPostsIdEditRoute
-  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
-  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
-  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
-  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -290,21 +266,18 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/email/suppression': typeof EmailSuppressionRoute
   '/admin': typeof AdminIndexRoute
   '/admin/$id/edit': typeof AdminIdEditRoute
   '/admin/posts/new': typeof AdminPostsNewRoute
   '/api/admin/notify-issue': typeof ApiAdminNotifyIssueRoute
-  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/email/auth/webhook': typeof EmailAuthWebhookRoute
+  '/email/queue/process': typeof EmailQueueProcessRoute
   '/noticia/$section/$slug': typeof NoticiaSectionSlugRoute
   '/revista/$number/leer': typeof RevistaNumberLeerRoute
   '/admin/posts': typeof AdminPostsIndexRoute
   '/revista/$number': typeof RevistaNumberIndexRoute
   '/admin/posts/$id/edit': typeof AdminPostsIdEditRoute
-  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
-  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
-  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
-  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -329,21 +302,18 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/email/suppression': typeof EmailSuppressionRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/$id/edit': typeof AdminIdEditRoute
   '/admin/posts/new': typeof AdminPostsNewRoute
   '/api/admin/notify-issue': typeof ApiAdminNotifyIssueRoute
-  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/email/auth/webhook': typeof EmailAuthWebhookRoute
+  '/email/queue/process': typeof EmailQueueProcessRoute
   '/noticia/$section/$slug': typeof NoticiaSectionSlugRoute
   '/revista/$number/leer': typeof RevistaNumberLeerRoute
   '/admin/posts/': typeof AdminPostsIndexRoute
   '/revista/$number/': typeof RevistaNumberIndexRoute
   '/admin/posts/$id/edit': typeof AdminPostsIdEditRoute
-  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
-  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
-  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
-  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -369,21 +339,18 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/login'
     | '/auth/register'
+    | '/email/suppression'
     | '/admin/'
     | '/admin/$id/edit'
     | '/admin/posts/new'
     | '/api/admin/notify-issue'
-    | '/lovable/email/suppression'
+    | '/email/auth/webhook'
+    | '/email/queue/process'
     | '/noticia/$section/$slug'
     | '/revista/$number/leer'
     | '/admin/posts/'
     | '/revista/$number/'
     | '/admin/posts/$id/edit'
-    | '/lovable/email/auth/preview'
-    | '/lovable/email/auth/webhook'
-    | '/lovable/email/queue/process'
-    | '/lovable/email/transactional/preview'
-    | '/lovable/email/transactional/send'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -407,21 +374,18 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/login'
     | '/auth/register'
+    | '/email/suppression'
     | '/admin'
     | '/admin/$id/edit'
     | '/admin/posts/new'
     | '/api/admin/notify-issue'
-    | '/lovable/email/suppression'
+    | '/email/auth/webhook'
+    | '/email/queue/process'
     | '/noticia/$section/$slug'
     | '/revista/$number/leer'
     | '/admin/posts'
     | '/revista/$number'
     | '/admin/posts/$id/edit'
-    | '/lovable/email/auth/preview'
-    | '/lovable/email/auth/webhook'
-    | '/lovable/email/queue/process'
-    | '/lovable/email/transactional/preview'
-    | '/lovable/email/transactional/send'
   id:
     | '__root__'
     | '/'
@@ -445,21 +409,18 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/login'
     | '/auth/register'
+    | '/email/suppression'
     | '/admin/'
     | '/admin/$id/edit'
     | '/admin/posts/new'
     | '/api/admin/notify-issue'
-    | '/lovable/email/suppression'
+    | '/email/auth/webhook'
+    | '/email/queue/process'
     | '/noticia/$section/$slug'
     | '/revista/$number/leer'
     | '/admin/posts/'
     | '/revista/$number/'
     | '/admin/posts/$id/edit'
-    | '/lovable/email/auth/preview'
-    | '/lovable/email/auth/webhook'
-    | '/lovable/email/queue/process'
-    | '/lovable/email/transactional/preview'
-    | '/lovable/email/transactional/send'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -484,21 +445,18 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
+  EmailSuppressionRoute: typeof EmailSuppressionRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminIdEditRoute: typeof AdminIdEditRoute
   AdminPostsNewRoute: typeof AdminPostsNewRoute
   ApiAdminNotifyIssueRoute: typeof ApiAdminNotifyIssueRoute
-  LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  EmailAuthWebhookRoute: typeof EmailAuthWebhookRoute
+  EmailQueueProcessRoute: typeof EmailQueueProcessRoute
   NoticiaSectionSlugRoute: typeof NoticiaSectionSlugRoute
   RevistaNumberLeerRoute: typeof RevistaNumberLeerRoute
   AdminPostsIndexRoute: typeof AdminPostsIndexRoute
   RevistaNumberIndexRoute: typeof RevistaNumberIndexRoute
   AdminPostsIdEditRoute: typeof AdminPostsIdEditRoute
-  LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
-  LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
-  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
-  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
-  LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -594,6 +552,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/email/suppression': {
+      id: '/email/suppression'
+      path: '/email/suppression'
+      fullPath: '/email/suppression'
+      preLoaderRoute: typeof EmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/register': {
       id: '/auth/register'
       path: '/auth/register'
@@ -685,11 +650,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NoticiaSectionSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/suppression': {
-      id: '/lovable/email/suppression'
-      path: '/lovable/email/suppression'
-      fullPath: '/lovable/email/suppression'
-      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+    '/email/queue/process': {
+      id: '/email/queue/process'
+      path: '/email/queue/process'
+      fullPath: '/email/queue/process'
+      preLoaderRoute: typeof EmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email/auth/webhook': {
+      id: '/email/auth/webhook'
+      path: '/email/auth/webhook'
+      fullPath: '/email/auth/webhook'
+      preLoaderRoute: typeof EmailAuthWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/notify-issue': {
@@ -711,41 +683,6 @@ declare module '@tanstack/react-router' {
       path: '/admin/$id/edit'
       fullPath: '/admin/$id/edit'
       preLoaderRoute: typeof AdminIdEditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/transactional/send': {
-      id: '/lovable/email/transactional/send'
-      path: '/lovable/email/transactional/send'
-      fullPath: '/lovable/email/transactional/send'
-      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/transactional/preview': {
-      id: '/lovable/email/transactional/preview'
-      path: '/lovable/email/transactional/preview'
-      fullPath: '/lovable/email/transactional/preview'
-      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/auth/webhook': {
-      id: '/lovable/email/auth/webhook'
-      path: '/lovable/email/auth/webhook'
-      fullPath: '/lovable/email/auth/webhook'
-      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/auth/preview': {
-      id: '/lovable/email/auth/preview'
-      path: '/lovable/email/auth/preview'
-      fullPath: '/lovable/email/auth/preview'
-      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/posts/$id/edit': {
@@ -780,21 +717,18 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
+  EmailSuppressionRoute: EmailSuppressionRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminIdEditRoute: AdminIdEditRoute,
   AdminPostsNewRoute: AdminPostsNewRoute,
   ApiAdminNotifyIssueRoute: ApiAdminNotifyIssueRoute,
-  LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  EmailAuthWebhookRoute: EmailAuthWebhookRoute,
+  EmailQueueProcessRoute: EmailQueueProcessRoute,
   NoticiaSectionSlugRoute: NoticiaSectionSlugRoute,
   RevistaNumberLeerRoute: RevistaNumberLeerRoute,
   AdminPostsIndexRoute: AdminPostsIndexRoute,
   RevistaNumberIndexRoute: RevistaNumberIndexRoute,
   AdminPostsIdEditRoute: AdminPostsIdEditRoute,
-  LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
-  LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
-  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
-  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
-  LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

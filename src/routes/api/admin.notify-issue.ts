@@ -4,9 +4,7 @@ import * as React from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { TEMPLATES } from '@/lib/email-templates/registry'
-
-const SENDER_DOMAIN = 'notify.rheckypolitan.es'
-const FROM_EMAIL = `Rheckypolitan <hola@${SENDER_DOMAIN}>`
+import { FROM_EMAIL, SENDER_DOMAIN } from '@/lib/email/config'
 
 const BodySchema = z.object({
   issueId: z.string().uuid(),

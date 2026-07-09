@@ -9,7 +9,7 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { loadEnv } from "vite";
 
 // Load all env vars (no prefix) into process.env so server routes can read
-// SUPABASE_SERVICE_ROLE_KEY, LOVABLE_API_KEY, etc. These are NOT exposed to the
+// SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, etc. These are NOT exposed to the
 // client because we do NOT add them to define/envDefine.
 const serverEnv = loadEnv(process.env.NODE_ENV ?? "development", process.cwd(), "");
 Object.assign(process.env, serverEnv);

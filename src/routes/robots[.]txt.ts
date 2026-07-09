@@ -8,7 +8,7 @@ export const Route = createFileRoute("/robots.txt")({
 Allow: /
 Disallow: /admin
 Disallow: /admin/
-Disallow: /lovable/
+Disallow: /email/
 Disallow: /api/
 Disallow: /unsubscribe
 

@@ -1,5 +1,8 @@
+"use client";
+
 import { useEffect, useState, useRef } from "react";
-import { Link } from "@tanstack/react-router";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -38,6 +41,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export function CommentsSection({ postId }: { postId: string }) {
+  const pathname = usePathname();
   const { user, loading: authLoading } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,12 +62,20 @@ export function CommentsSection({ postId }: { postId: string }) {
     const ids = Array.from(new Set(list.map((r: any) => r.user_id)));
     let profilesMap: Record<string, { display_name: string; avatar_url: string | null }> = {};
     if (ids.length) {
-      const { data: profs } = await supabase.from("profiles").select("id, display_name, avatar_url").in("id", ids);
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, display_name, avatar_url")
+        .in("id", ids);
       profilesMap = Object.fromEntries(
-        (profs ?? []).map((p: any) => [p.id, { display_name: p.display_name, avatar_url: p.avatar_url }]),
+        (profs ?? []).map((p: any) => [
+          p.id,
+          { display_name: p.display_name, avatar_url: p.avatar_url },
+        ]),
       );
     }
-    setComments(list.map((r: any) => ({ ...r, profiles: profilesMap[r.user_id] ?? null })) as Comment[]);
+    setComments(
+      list.map((r: any) => ({ ...r, profiles: profilesMap[r.user_id] ?? null })) as Comment[],
+    );
     setLoading(false);
   };
 
@@ -163,7 +175,9 @@ export function CommentsSection({ postId }: { postId: string }) {
       {/* Header */}
       <div className="mb-8 flex items-end justify-between">
         <div>
-          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">★ Conversación</span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
+            ★ Conversación
+          </span>
           <h2 className="mt-1 font-display text-2xl leading-tight">
             {comments.length === 0
               ? "Comentarios"
@@ -207,16 +221,14 @@ export function CommentsSection({ postId }: { postId: string }) {
             <div className="border border-dashed border-foreground/20 px-6 py-8 text-center">
               <p className="text-sm text-muted-foreground">
                 <Link
-                  to="/auth/login"
-                  search={{ redirect: window.location.pathname }}
+                  href="/login"
                   className="font-medium text-[#B22234] underline underline-offset-2 hover:text-[#8B1A29]"
                 >
                   Inicia sesión
                 </Link>{" "}
                 o{" "}
                 <Link
-                  to="/auth/register"
-                  search={{ redirect: window.location.pathname }}
+                  href={`/auth/register?redirect=${encodeURIComponent(pathname)}`}
                   className="font-medium text-[#B22234] underline underline-offset-2 hover:text-[#8B1A29]"
                 >
                   regístrate
@@ -244,7 +256,9 @@ export function CommentsSection({ postId }: { postId: string }) {
       ) : comments.length === 0 ? (
         <div className="border border-dashed border-foreground/15 px-6 py-12 text-center">
           <p className="font-display text-lg text-foreground/60">Sé el primero en comentar.</p>
-          <p className="mt-1 text-sm text-muted-foreground">Comparte tu opinión sobre este artículo.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Comparte tu opinión sobre este artículo.
+          </p>
         </div>
       ) : (
         <ul className="space-y-0 divide-y divide-foreground/10">
@@ -264,9 +278,17 @@ export function CommentsSection({ postId }: { postId: string }) {
                   <div className="min-w-0 flex-1">
                     {/* Meta */}
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] font-medium text-foreground">{displayName}</span>
-                      <span className="font-mono text-[10px] text-muted-foreground">{timeAgo(comment.created_at)}</span>
-                      {isEdited && <span className="font-mono text-[9px] italic text-muted-foreground">(editado)</span>}
+                      <span className="font-mono text-[11px] font-medium text-foreground">
+                        {displayName}
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {timeAgo(comment.created_at)}
+                      </span>
+                      {isEdited && (
+                        <span className="font-mono text-[9px] italic text-muted-foreground">
+                          (editado)
+                        </span>
+                      )}
                     </div>
 
                     {/* Content / edit mode */}
