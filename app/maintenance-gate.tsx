@@ -1,16 +1,14 @@
-import { headers } from "next/headers";
-import { MaintenanceScreen } from "@/components/maintenance/maintenance-screen";
-import { shouldShowMaintenanceScreen } from "@/lib/maintenance";
 import { getMaintenanceMode } from "@/lib/maintenance-server";
+import { MaintenanceGateShell } from "@/components/maintenance/maintenance-gate-shell";
+
+export const dynamic = "force-dynamic";
 
 export async function MaintenanceGate({ children }: { children: React.ReactNode }) {
-  const headerList = await headers();
-  const pathname = headerList.get("x-pathname") ?? "/";
   const maintenanceMode = await getMaintenanceMode();
 
-  if (shouldShowMaintenanceScreen(pathname, maintenanceMode)) {
-    return <MaintenanceScreen />;
-  }
-
-  return <>{children}</>;
+  return (
+    <MaintenanceGateShell initialMaintenanceMode={maintenanceMode}>
+      {children}
+    </MaintenanceGateShell>
+  );
 }

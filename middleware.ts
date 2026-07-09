@@ -4,6 +4,9 @@ import { updateSession } from "@/lib/middleware";
 function withPathnameHeader(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", request.nextUrl.pathname);
+  if (request.cookies.get("maintenance_mode")?.value === "1") {
+    requestHeaders.set("x-maintenance-mode", "1");
+  }
   return requestHeaders;
 }
 

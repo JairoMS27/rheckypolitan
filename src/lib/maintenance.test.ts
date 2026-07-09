@@ -17,6 +17,12 @@ describe("isMaintenanceExemptPath", () => {
     expect(isMaintenanceExemptPath("/")).toBe(false);
     expect(isMaintenanceExemptPath("/actualidad")).toBe(false);
     expect(isMaintenanceExemptPath("/revista/1")).toBe(false);
+    expect(isMaintenanceExemptPath("/profile")).toBe(false);
+  });
+
+  test("maintenance status APIs stay reachable", () => {
+    expect(isMaintenanceExemptPath("/api/maintenance/status")).toBe(true);
+    expect(isMaintenanceExemptPath("/api/admin/maintenance")).toBe(true);
   });
 });
 
@@ -35,6 +41,11 @@ describe("shouldShowMaintenanceScreen", () => {
     expect(shouldShowMaintenanceScreen("/login", true)).toBe(false);
     expect(shouldShowMaintenanceScreen("/admin", true)).toBe(false);
     expect(shouldShowMaintenanceScreen("/admin/posts/new", true)).toBe(false);
+  });
+
+  test("on: blocks logged-in user destinations", () => {
+    expect(shouldShowMaintenanceScreen("/profile", true)).toBe(true);
+    expect(shouldShowMaintenanceScreen("/", true)).toBe(true);
   });
 });
 

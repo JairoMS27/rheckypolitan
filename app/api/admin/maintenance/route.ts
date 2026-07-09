@@ -30,5 +30,17 @@ export async function POST(request: NextRequest) {
   }
 
   const maintenance_mode = await setMaintenanceMode(body.enabled);
-  return NextResponse.json({ maintenance_mode });
+  const response = NextResponse.json({ maintenance_mode });
+
+  if (maintenance_mode) {
+    response.cookies.set("maintenance_mode", "1", {
+      path: "/",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  } else {
+    response.cookies.set("maintenance_mode", "", { path: "/", maxAge: 0 });
+  }
+
+  return response;
 }
