@@ -1,11 +1,11 @@
-import { render } from "@react-email/components";
-import * as React from "react";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { TEMPLATES } from "@/lib/email-templates/registry";
-import { FROM_EMAIL, SENDER_DOMAIN } from "@/lib/email/config";
-import { scheduleEmailQueueProcessing } from "@/lib/email/schedule-queue";
+import {
+  logEmailSend,
+  sendBulkTemplateEmails,
+  type SendTemplateEmailInput,
+} from "@/lib/email/send-transactional";
 
 const BodySchema = z.object({
   issueId: z.string().uuid(),
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     .filter((e: string) => !suppressedSet.has(e));
 
   if (recipients.length === 0) {
-    return NextResponse.json({ ok: true, queued: 0, total: 0, message: "No hay suscriptores" });
+    return NextResponse.json({ ok: true, sent: 0, total: 0, message: "No hay suscriptores" });
   }
 
   const { data: existingTokens } = await supabase
@@ -86,84 +86,57 @@ export async function POST(request: Request) {
     if (!tokErr) rows.forEach((r) => tokenMap.set(r.email, r.token));
   }
 
-  const entry = TEMPLATES["new-issue-announcement"];
-  if (!entry) return NextResponse.json({ error: "Template missing" }, { status: 500 });
-
-  const subjectFn = entry.subject;
-  const subject =
-    typeof subjectFn === "function"
-      ? subjectFn({ number: issue.number, title: issue.title })
-      : subjectFn;
-
   const messageIdBase = `new-issue-${issue.id}`;
-  let queued = 0;
-  let failed = 0;
-  const errors: string[] = [];
-
-  for (const email of recipients) {
+  const items: SendTemplateEmailInput[] = recipients.map((email) => {
     const unsubscribeToken = tokenMap.get(email) ?? null;
     const unsubscribeUrl = unsubscribeToken
       ? `${siteOrigin}/unsubscribe?token=${unsubscribeToken}`
       : undefined;
-    const props = {
-      number: issue.number,
-      title: issue.title,
-      coverUrl,
-      readUrl,
-      unsubscribeUrl,
-    };
-    const element = React.createElement(entry.component, props);
-    const html = await render(element);
-    const text = await render(element, { plainText: true });
     const messageId = `${messageIdBase}-${email}`;
-
-    const { error: enqErr } = await supabase.rpc("enqueue_email", {
-      queue_name: "transactional_emails",
-      payload: {
-        to: email,
-        from: FROM_EMAIL,
-        sender_domain: SENDER_DOMAIN,
-        subject,
-        html,
-        text,
-        purpose: "transactional",
-        label: "new-issue-announcement",
-        idempotency_key: messageId,
-        message_id: messageId,
-        unsubscribe_token: unsubscribeToken,
-        queued_at: new Date().toISOString(),
+    return {
+      templateKey: "new-issue-announcement",
+      to: email,
+      templateProps: {
+        number: issue.number,
+        title: issue.title,
+        coverUrl,
+        readUrl,
+        unsubscribeUrl,
       },
-    });
+      messageId,
+      unsubscribeToken,
+      idempotencyKey: messageId,
+    };
+  });
 
-    if (enqErr) {
-      failed++;
-      errors.push(`${email}: ${enqErr.message}`);
-      await supabase.from("email_send_log").insert({
-        message_id: messageId,
-        template_name: "new-issue-announcement",
-        recipient_email: email,
-        status: "failed",
-        error_message: enqErr.message,
-      });
-    } else {
-      queued++;
-      await supabase.from("email_send_log").insert({
-        message_id: messageId,
-        template_name: "new-issue-announcement",
-        recipient_email: email,
-        status: "pending",
-      });
-    }
+  const { sent, failed, errors, results } = await sendBulkTemplateEmails(items);
+
+  for (const { input, result } of results) {
+    await logEmailSend(supabase, {
+      messageId: input.messageId,
+      templateName: "new-issue-announcement",
+      recipientEmail: input.to,
+      status: result.ok ? "sent" : "failed",
+      errorMessage: result.ok ? undefined : result.error,
+    });
   }
 
-  if (queued > 0) {
-    scheduleEmailQueueProcessing({ drain: true });
+  if (sent === 0 && failed > 0) {
+    return NextResponse.json(
+      {
+        ok: false,
+        sent: 0,
+        failed,
+        total: recipients.length,
+        errors: errors.slice(0, 5),
+      },
+      { status: 502 },
+    );
   }
 
   return NextResponse.json({
     ok: true,
-    sent: queued,
-    queued,
+    sent,
     failed,
     total: recipients.length,
     errors: errors.slice(0, 5),

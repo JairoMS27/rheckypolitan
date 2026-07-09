@@ -76,7 +76,6 @@
     "recharts": "^2.15.4",
     "resend": "^6.17.2",
     "sonner": "^2.0.7",
-    "svix": "^1.96.1",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
     "tw-animate-css": "^1.3.4",

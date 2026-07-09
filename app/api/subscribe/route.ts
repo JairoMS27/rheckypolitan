@@ -1,11 +1,7 @@
-import { render } from "@react-email/components";
-import * as React from "react";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { scheduleEmailQueueProcessing } from "@/lib/email/schedule-queue";
 import { z } from "zod";
-import { TEMPLATES } from "@/lib/email-templates/registry";
-import { FROM_EMAIL, SENDER_DOMAIN } from "@/lib/email/config";
+import { logEmailSend, sendTemplateEmail } from "@/lib/email/send-transactional";
 
 const BodySchema = z.object({
   email: z.string().email().max(254),
@@ -92,17 +88,6 @@ export async function POST(request: Request) {
       }
     : null;
 
-  const entry = TEMPLATES["newsletter-confirmation"];
-  if (!entry) {
-    return NextResponse.json({ error: "Template missing" }, { status: 500 });
-  }
-  const templateProps = { email, latest };
-  const element = React.createElement(entry.component, templateProps);
-  const html = await render(element);
-  const text = await render(element, { plainText: true });
-  const subject =
-    typeof entry.subject === "function" ? entry.subject(templateProps) : entry.subject;
-
   let unsubscribeToken: string | null = null;
   const { data: existingToken } = await supabase
     .from("email_unsubscribe_tokens")
@@ -120,37 +105,32 @@ export async function POST(request: Request) {
   }
 
   const messageId = `newsletter-confirm-${email}`;
-
-  const { error: enqErr } = await supabase.rpc("enqueue_email", {
-    queue_name: "transactional_emails",
-    payload: {
-      to: email,
-      from: FROM_EMAIL,
-      sender_domain: SENDER_DOMAIN,
-      subject,
-      html,
-      text,
-      purpose: "transactional",
-      label: "newsletter-confirmation",
-      idempotency_key: messageId,
-      message_id: messageId,
-      unsubscribe_token: unsubscribeToken,
-      queued_at: new Date().toISOString(),
-    },
+  const sendResult = await sendTemplateEmail({
+    templateKey: "newsletter-confirmation",
+    to: email,
+    templateProps: { email, latest },
+    messageId,
+    unsubscribeToken,
+    idempotencyKey: messageId,
   });
-  if (enqErr) {
-    console.error("Failed to enqueue email", enqErr);
-    return NextResponse.json({ error: "No se pudo encolar el correo" }, { status: 500 });
+
+  if (!sendResult.ok) {
+    await logEmailSend(supabase, {
+      messageId,
+      templateName: "newsletter-confirmation",
+      recipientEmail: email,
+      status: "failed",
+      errorMessage: sendResult.error,
+    });
+    return NextResponse.json({ error: "No se pudo enviar el correo de confirmación" }, { status: 502 });
   }
 
-  await supabase.from("email_send_log").insert({
-    message_id: messageId,
-    template_name: "newsletter-confirmation",
-    recipient_email: email,
-    status: "pending",
+  await logEmailSend(supabase, {
+    messageId,
+    templateName: "newsletter-confirmation",
+    recipientEmail: email,
+    status: "sent",
   });
 
-  scheduleEmailQueueProcessing();
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, sent: true, resendId: sendResult.resendId });
 }
