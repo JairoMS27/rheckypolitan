@@ -2,6 +2,7 @@ import { render } from "@react-email/components";
 import * as React from "react";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { scheduleEmailQueueProcessing } from "@/lib/email/schedule-queue";
 import { z } from "zod";
 import { TEMPLATES } from "@/lib/email-templates/registry";
 import { FROM_EMAIL, SENDER_DOMAIN } from "@/lib/email/config";
@@ -148,6 +149,8 @@ export async function POST(request: Request) {
     recipient_email: email,
     status: "pending",
   });
+
+  scheduleEmailQueueProcessing();
 
   return NextResponse.json({ ok: true });
 }

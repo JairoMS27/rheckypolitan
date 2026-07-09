@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { TEMPLATES } from "@/lib/email-templates/registry";
 import { FROM_EMAIL, SENDER_DOMAIN } from "@/lib/email/config";
+import { scheduleEmailQueueProcessing } from "@/lib/email/schedule-queue";
 
 const BodySchema = z.object({
   issueId: z.string().uuid(),
@@ -153,6 +154,10 @@ export async function POST(request: Request) {
         status: "pending",
       });
     }
+  }
+
+  if (queued > 0) {
+    scheduleEmailQueueProcessing({ drain: true });
   }
 
   return NextResponse.json({

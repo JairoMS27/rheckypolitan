@@ -17,6 +17,7 @@ import {
   buildAuthConfirmationUrl,
   verifySupabaseAuthHook,
 } from "@/lib/email/supabase-auth-hook";
+import { scheduleEmailQueueProcessing } from "@/lib/email/schedule-queue";
 import { getSupabaseUrl } from "@/lib/supabase-env";
 
 const EMAIL_SUBJECTS: Record<string, string> = {
@@ -136,6 +137,8 @@ export async function POST(request: Request) {
     emailType,
     email_redacted: redactEmail(recipient),
   });
+
+  scheduleEmailQueueProcessing();
 
   return Response.json({ success: true, queued: true });
 }

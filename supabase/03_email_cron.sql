@@ -1,8 +1,9 @@
 -- ============================================================
--- OPCIONAL: cron en Supabase (pg_cron)
--- Solo funciona si tienes la extensión pg_cron habilitada.
+-- OPCIONAL (respaldo): cron en Supabase (pg_cron)
+-- La app procesa la cola en background al encolar correos (Next.js after()).
+-- Usa este script solo si quieres reintentos periódicos de mensajes atascados.
 -- Dashboard → Database → Extensions → busca "pg_cron" y actívala.
--- En el plan Free a veces NO está disponible → usa Vercel Cron (ver abajo).
+-- Alternativa gratuita: cron-job.org llamando POST /email/queue/process con CRON_SECRET.
 -- ============================================================
 
 -- Extensiones necesarias (ejecuta solo si el Dashboard no las activó)
@@ -10,11 +11,11 @@ CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS supabase_vault;
 CREATE EXTENSION IF NOT EXISTS pg_net SCHEMA extensions;
 
--- 1) Guardar service role en vault (pega tu key real)
+-- 1) Guardar CRON_SECRET en vault (mismo valor que en Vercel → CRON_SECRET)
 SELECT vault.create_secret(
-  'TU_SERVICE_ROLE_KEY',
-  'email_queue_service_role_key',
-  'Service role for email queue processor'
+  'TU_CRON_SECRET',
+  'email_queue_cron_secret',
+  'Bearer token for email queue processor'
 );
 
 -- 2) Programar el worker cada minuto
@@ -29,7 +30,7 @@ SELECT cron.schedule(
       'Authorization', 'Bearer ' || (
         SELECT decrypted_secret
         FROM vault.decrypted_secrets
-        WHERE name = 'email_queue_service_role_key'
+        WHERE name = 'email_queue_cron_secret'
       )
     ),
     body := '{}'::jsonb
