@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { MaintenanceGate } from "./maintenance-gate";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -46,6 +47,7 @@ export default function RootLayout({
         <Providers>
           <MaintenanceGate>{children}</MaintenanceGate>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
