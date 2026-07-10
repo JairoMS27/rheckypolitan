@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { IssueCover } from "@/components/issue-cover";
+import { MagazineShelf } from "@/components/magazine-shelf";
 import { UserMenu } from "@/components/user-menu";
 import { publicUrl } from "@/lib/storage";
 import rheckyPhoto from "@/assets/rhecky.png";
@@ -132,7 +132,6 @@ export function HomePage() {
   }, [issues]);
 
   const latest = issues?.[0] ?? null;
-  const shelf = issues?.slice(1) ?? [];
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -525,7 +524,7 @@ export function HomePage() {
           </section>
         )}
 
-        {/* Magazine archive shelf */}
+        {/* Interactive SVG magazine shelf */}
         <section id="archivo" className="scroll-mt-8">
           <div className="mx-auto max-w-[1400px] px-5 py-14 md:px-8 md:py-20">
             <div className="mb-10 grid grid-cols-1 items-end gap-6 border-b border-foreground pb-6 md:grid-cols-12">
@@ -537,8 +536,8 @@ export function HomePage() {
                   El estante
                 </h2>
                 <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-                  Cada portada es una puerta. Pasa el cursor y el número se
-                  abre un poco — como en el kiosco de la esquina.
+                  Las revistas están en el estante. Haz clic en una: se sale,
+                  se abre y puedes pasar las páginas como en el visualizador.
                 </p>
               </div>
               <div className="md:col-span-4 md:text-right">
@@ -556,37 +555,14 @@ export function HomePage() {
             ) : issues.length === 0 ? (
               <Empty />
             ) : (
-              <>
-                {/* Featured already shown in hero — rest of shelf, or all if few */}
-                <ul className="grid grid-cols-2 gap-x-5 gap-y-12 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                  {(shelf.length > 0 ? [latest!, ...shelf] : issues)
-                    .filter(Boolean)
-                    .map((issue) => (
-                      <li key={issue.id}>
-                        <Link
-                          href={`/revista/${issue.number}`}
-                          className="group block"
-                        >
-                          <IssueCover
-                            number={issue.number}
-                            coverPath={issue.cover_path}
-                          />
-                          <div className="mt-4 flex items-baseline justify-between gap-2">
-                            <span className="font-mono text-[10px] uppercase tracking-widest text-[#B22234]">
-                              N.º {String(issue.number).padStart(2, "0")}
-                            </span>
-                            <span className="truncate font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                              {formatDate(issue.published_at)}
-                            </span>
-                          </div>
-                          <h3 className="mt-1 font-display text-lg leading-tight transition group-hover:text-[#B22234] md:text-xl">
-                            {issue.title}
-                          </h3>
-                        </Link>
-                      </li>
-                    ))}
-                </ul>
-              </>
+              <MagazineShelf
+                issues={issues.map((i) => ({
+                  id: i.id,
+                  number: i.number,
+                  title: i.title,
+                  cover_path: i.cover_path,
+                }))}
+              />
             )}
           </div>
         </section>
@@ -834,15 +810,7 @@ export function HomePage() {
 
 function Skeleton() {
   return (
-    <ul className="grid grid-cols-2 gap-x-5 gap-y-12 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <li key={i}>
-          <div className="aspect-[3/4] animate-pulse bg-muted" />
-          <div className="mt-4 h-3 w-1/3 animate-pulse bg-muted" />
-          <div className="mt-2 h-5 w-2/3 animate-pulse bg-muted" />
-        </li>
-      ))}
-    </ul>
+    <div className="mx-auto aspect-[1000/400] w-full max-w-[1100px] animate-pulse bg-muted" />
   );
 }
 
