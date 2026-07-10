@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
-import { authorPostsListPath } from "@/lib/dashboard-paths";
+import { AdminPostsPage } from "@/views/admin-posts";
 
 export default function Page() {
-  redirect(authorPostsListPath());
+  return <AdminPostsPage />;
 }

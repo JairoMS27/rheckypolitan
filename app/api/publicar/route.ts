@@ -46,7 +46,11 @@ async function isAdmin(userClient: ReturnType<typeof createClient>, userId: stri
   return Boolean(data);
 }
 
-/** List: own posts for any account; all posts for admin. */
+/**
+ * List articles.
+ * - Default / ?scope=mine → only the caller's posts (used by /publicar).
+ * - ?scope=all → every post; admin only (used by /admin/posts).
+ */
 export async function GET(request: NextRequest) {
   const auth = await getAuthenticatedSupabase(request);
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -55,16 +59,52 @@ export async function GET(request: NextRequest) {
   if (!admin) return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
 
   const staffAdmin = await isAdmin(auth.supabase as any, auth.userId);
+  const scope = new URL(request.url).searchParams.get("scope");
+  const wantAll = scope === "all";
+
+  if (wantAll && !staffAdmin) {
+    return NextResponse.json({ error: "Solo admin puede ver todos los artículos" }, { status: 403 });
+  }
+
   let query = admin
     .from("posts")
     .select("id,section,slug,title,cover_path,published,published_at,author_id,excerpt,author")
     .order("published_at", { ascending: false });
-  if (!staffAdmin) {
+
+  // /publicar always uses own posts; scope=all is admin-only catalog.
+  if (!wantAll) {
     query = query.eq("author_id", auth.userId);
   }
+
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ posts: data ?? [], isAdmin: staffAdmin });
+
+  const posts = data ?? [];
+
+  // Enrich with profile names when listing everyone (admin catalog).
+  if (wantAll && posts.length > 0) {
+    const ids = [...new Set(posts.map((p) => p.author_id).filter(Boolean))] as string[];
+    if (ids.length) {
+      const { data: profiles } = await admin
+        .from("profiles")
+        .select("id, display_name, username")
+        .in("id", ids);
+      const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
+      return NextResponse.json({
+        posts: posts.map((p) => {
+          const profile = p.author_id ? byId.get(p.author_id) : null;
+          return {
+            ...p,
+            author_display_name: profile?.display_name ?? p.author ?? null,
+            author_username: profile?.username ?? null,
+          };
+        }),
+        isAdmin: staffAdmin,
+      });
+    }
+  }
+
+  return NextResponse.json({ posts, isAdmin: staffAdmin });
 }
 
 /** Create or update artículo. Any authenticated account; always own author_id on create. */

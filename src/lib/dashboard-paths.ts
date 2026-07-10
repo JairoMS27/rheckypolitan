@@ -53,16 +53,17 @@ export function isAuthorPublishPath(pathname: string): boolean {
 }
 
 /**
- * Map legacy staff article URLs to the author publish surface.
- * Returns null if the path is not a legacy posts URL.
+ * Map legacy articulos aliases (and admin "new") to the author publish surface.
+ * /admin/posts itself is the admin catalog — not redirected.
+ * Returns null if the path should stay as-is.
  */
 export function legacyAdminPostsToAuthorPath(pathname: string): string | null {
   if (!pathname) return null;
-  if (pathname === "/admin/posts" || pathname === "/admin/posts/") {
-    return authorPostsListPath();
-  }
-  if (pathname === "/admin/posts/new" || pathname === "/admin/articulos" || pathname === "/admin/articulos/") {
+  if (pathname === "/admin/posts/new") {
     return authorPostNewPath();
+  }
+  if (pathname === "/admin/articulos" || pathname === "/admin/articulos/") {
+    return authorPostsListPath();
   }
   const edit = pathname.match(/^\/admin\/posts\/([^/]+)\/edit\/?$/);
   if (edit?.[1]) return authorPostEditPath(edit[1]);

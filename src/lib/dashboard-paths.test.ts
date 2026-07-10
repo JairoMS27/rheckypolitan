@@ -72,12 +72,12 @@ describe("canPublishArticles", () => {
 });
 
 describe("legacyAdminPostsToAuthorPath", () => {
-  test("maps admin posts URLs to /publicar", () => {
-    expect(legacyAdminPostsToAuthorPath("/admin/posts")).toBe("/publicar");
-    expect(legacyAdminPostsToAuthorPath("/admin/posts/")).toBe("/publicar");
+  test("keeps /admin/posts catalog; maps new/edit aliases to /publicar", () => {
+    expect(legacyAdminPostsToAuthorPath("/admin/posts")).toBeNull();
+    expect(legacyAdminPostsToAuthorPath("/admin/posts/")).toBeNull();
     expect(legacyAdminPostsToAuthorPath("/admin/posts/new")).toBe("/publicar/nuevo");
     expect(legacyAdminPostsToAuthorPath("/admin/posts/uuid-1/edit")).toBe("/publicar/uuid-1/edit");
-    expect(legacyAdminPostsToAuthorPath("/admin/articulos")).toBe("/publicar/nuevo");
+    expect(legacyAdminPostsToAuthorPath("/admin/articulos")).toBe("/publicar");
   });
 
   test("leaves non-legacy paths alone", () => {

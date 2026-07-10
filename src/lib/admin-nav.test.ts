@@ -1,14 +1,15 @@
 import { describe, expect, test } from "bun:test";
 import {
+  ADMIN_POSTS_PATH,
   adminSectionKicker,
   filterAdminNavForRole,
   getAdminNavGroups,
   isAdminNavItemActive,
 } from "./admin-nav";
-import { authorPostsListPath, authorPostNewPath } from "./dashboard-paths";
+import { authorPostNewPath } from "./dashboard-paths";
 
 describe("getAdminNavGroups IA", () => {
-  test("separates revistas from artículos author surface", () => {
+  test("separates revistas from artículos admin catalog", () => {
     const groups = getAdminNavGroups();
     const ids = groups.map((g) => g.id);
     expect(ids).toContain("revistas");
@@ -17,16 +18,19 @@ describe("getAdminNavGroups IA", () => {
     expect(ids).toContain("equipo");
 
     const escritura = groups.find((g) => g.id === "escritura")!;
-    expect(escritura.items.every((i) => i.isAuthorSurface)).toBe(true);
-    expect(escritura.items.map((i) => i.href)).toContain(authorPostsListPath());
-    expect(escritura.items.map((i) => i.href)).toContain(authorPostNewPath());
+    const articles = escritura.items.find((i) => i.id === "articles")!;
+    expect(articles.href).toBe(ADMIN_POSTS_PATH);
+    expect(articles.access).toBe("admin");
+    expect(articles.isAuthorSurface).toBeUndefined();
+
+    const newArticle = escritura.items.find((i) => i.id === "new-article")!;
+    expect(newArticle.href).toBe(authorPostNewPath());
+    expect(newArticle.isAuthorSurface).toBe(true);
 
     const revistas = groups.find((g) => g.id === "revistas")!;
     expect(revistas.items.every((i) => !i.isAuthorSurface)).toBe(true);
     expect(revistas.items.some((i) => i.href === "/admin")).toBe(true);
     expect(revistas.items.some((i) => i.href.includes("/newspaper"))).toBe(true);
-    // Never treat /admin/posts as primary article path
-    expect(revistas.items.every((i) => !i.href.includes("/admin/posts"))).toBe(true);
   });
 
   test("filterAdminNavForRole hides admin-only items from non-admin staff", () => {
@@ -34,7 +38,8 @@ describe("getAdminNavGroups IA", () => {
     const staff = filterAdminNavForRole(all, { isAdmin: false, isStaff: true });
     const hrefs = staff.flatMap((g) => g.items.map((i) => i.href));
     expect(hrefs).toContain("/admin/newspaper");
-    expect(hrefs).toContain(authorPostsListPath());
+    expect(hrefs).toContain(authorPostNewPath());
+    expect(hrefs).not.toContain(ADMIN_POSTS_PATH);
     expect(hrefs).not.toContain("/admin/users");
     expect(hrefs).not.toContain("/admin/subscribers");
     expect(hrefs).not.toContain("/admin/new");
@@ -49,7 +54,7 @@ describe("getAdminNavGroups IA", () => {
     expect(hrefs).toContain("/admin");
     expect(hrefs).toContain("/admin/users");
     expect(hrefs).toContain("/admin/subscribers");
-    expect(hrefs).toContain(authorPostsListPath());
+    expect(hrefs).toContain(ADMIN_POSTS_PATH);
     const usersItem = getAdminNavGroups()
       .flatMap((g) => g.items)
       .find((i) => i.id === "users");
@@ -67,12 +72,13 @@ describe("isAdminNavItemActive", () => {
     expect(isAdminNavItemActive("/admin/newspaper", issues)).toBe(false);
   });
 
-  test("author surface active on /publicar", () => {
+  test("admin articles catalog active on /admin/posts", () => {
     const articles = getAdminNavGroups()
       .flatMap((g) => g.items)
       .find((i) => i.id === "articles")!;
-    expect(isAdminNavItemActive("/publicar", articles)).toBe(true);
-    expect(isAdminNavItemActive("/publicar/nuevo", articles)).toBe(true);
+    expect(isAdminNavItemActive("/admin/posts", articles)).toBe(true);
+    expect(isAdminNavItemActive("/admin/posts/", articles)).toBe(true);
+    expect(isAdminNavItemActive("/publicar", articles)).toBe(false);
     expect(isAdminNavItemActive("/admin", articles)).toBe(false);
   });
 });
@@ -83,5 +89,6 @@ describe("adminSectionKicker", () => {
     expect(adminSectionKicker("/admin/subscribers")).toContain("Sitio");
     expect(adminSectionKicker("/admin/users")).toContain("Usuarios");
     expect(adminSectionKicker("/admin/newspaper")).toContain("Periódico");
+    expect(adminSectionKicker("/admin/posts")).toContain("Artículos");
   });
 });

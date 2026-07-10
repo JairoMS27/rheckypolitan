@@ -6,7 +6,6 @@
 import {
   ADMIN_DASHBOARD_PATH,
   authorPostNewPath,
-  authorPostsListPath,
 } from "@/lib/dashboard-paths";
 
 export type AdminNavItem = {
@@ -18,6 +17,9 @@ export type AdminNavItem = {
   /** True when this link leaves the magazine admin surface for articles */
   isAuthorSurface?: boolean;
 };
+
+/** Admin catalog of every author's articles. */
+export const ADMIN_POSTS_PATH = `${ADMIN_DASHBOARD_PATH}/posts`;
 
 export type AdminNavGroup = {
   id: string;
@@ -83,9 +85,8 @@ export function getAdminNavGroups(): AdminNavGroup[] {
         {
           id: "articles",
           label: "Artículos",
-          href: authorPostsListPath(),
-          access: "staff",
-          isAuthorSurface: true,
+          href: ADMIN_POSTS_PATH,
+          access: "admin",
         },
         {
           id: "new-article",
@@ -130,6 +131,12 @@ export function isAdminNavItemActive(pathname: string, item: AdminNavItem): bool
   if (item.id === "new-issue") {
     return pathname === `${ADMIN_DASHBOARD_PATH}/new`;
   }
+  if (item.id === "articles") {
+    return (
+      pathname === ADMIN_POSTS_PATH ||
+      pathname.startsWith(`${ADMIN_POSTS_PATH}/`)
+    );
+  }
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
@@ -137,6 +144,7 @@ export function adminSectionKicker(pathname: string): string {
   if (pathname.startsWith("/admin/newspaper")) return "Revistas · Periódico";
   if (pathname.startsWith("/admin/subscribers")) return "Sitio · Newsletter";
   if (pathname.startsWith("/admin/users")) return "Equipo · Usuarios";
+  if (pathname.startsWith(ADMIN_POSTS_PATH)) return "Escritura · Artículos";
   if (pathname === "/admin/new") return "Revistas · Nuevo número";
   if (pathname.match(/^\/admin\/[^/]+\/edit/)) return "Revistas · Editar número";
   if (pathname === "/admin" || pathname === "/admin/") return "Revistas · Archivo";

@@ -238,12 +238,92 @@ describe("POST /api/publicar — any authenticated account", () => {
       },
     });
 
-    const req = new NextRequest("http://localhost/api/publicar", { method: "GET" });
+    const req = new NextRequest("http://localhost/api/publicar?scope=mine", {
+      method: "GET",
+    });
     const res = await GET(req);
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.isAdmin).toBe(false);
     expect(json.posts).toHaveLength(1);
     expect(json.posts[0].title).toBe("Mío");
+  });
+
+  test("GET without scope still lists only own posts (mis artículos)", async () => {
+    posts = [
+      {
+        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        author_id: "user-plain-1",
+        title: "Mío",
+        section: "actualidad",
+        slug: "mio",
+        published: true,
+        published_at: "2026-07-10T12:00:00.000Z",
+        cover_path: null,
+        content_html: "",
+        author: null,
+        excerpt: null,
+        cover_position: "50% 50%",
+      },
+      {
+        id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        author_id: "someone-else",
+        title: "Ajeno",
+        section: "actualidad",
+        slug: "ajeno",
+        published: true,
+        published_at: "2026-07-10T12:00:00.000Z",
+        cover_path: null,
+        content_html: "",
+        author: null,
+        excerpt: null,
+        cover_position: "50% 50%",
+      },
+    ];
+
+    getAuthenticatedSupabase.mockResolvedValue({
+      userId: "user-plain-1",
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({ data: null, error: null }),
+              }),
+            }),
+          }),
+        }),
+      },
+    });
+
+    const req = new NextRequest("http://localhost/api/publicar", { method: "GET" });
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.posts).toHaveLength(1);
+    expect(json.posts[0].title).toBe("Mío");
+  });
+
+  test("GET scope=all is forbidden for non-admin", async () => {
+    getAuthenticatedSupabase.mockResolvedValue({
+      userId: "user-plain-1",
+      supabase: {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({ data: null, error: null }),
+              }),
+            }),
+          }),
+        }),
+      },
+    });
+
+    const req = new NextRequest("http://localhost/api/publicar?scope=all", {
+      method: "GET",
+    });
+    const res = await GET(req);
+    expect(res.status).toBe(403);
   });
 });

@@ -18,14 +18,29 @@ export type AuthorPostRow = {
   author_id: string | null;
   excerpt?: string | null;
   author?: string | null;
+  author_display_name?: string | null;
+  author_username?: string | null;
 };
 
+/** Always the signed-in user's articles (Mis artículos / /publicar). */
 export async function fetchAuthorPosts(): Promise<{
   posts: AuthorPostRow[];
   isAdmin: boolean;
 }> {
   const headers = await authHeaders();
-  const res = await fetch("/api/publicar", { headers, cache: "no-store" });
+  const res = await fetch("/api/publicar?scope=mine", { headers, cache: "no-store" });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json.error ?? "No se pudieron cargar los artículos");
+  return { posts: json.posts ?? [], isAdmin: Boolean(json.isAdmin) };
+}
+
+/** Admin catalog: every author's articles. */
+export async function fetchAllPostsForAdmin(): Promise<{
+  posts: AuthorPostRow[];
+  isAdmin: boolean;
+}> {
+  const headers = await authHeaders();
+  const res = await fetch("/api/publicar?scope=all", { headers, cache: "no-store" });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error ?? "No se pudieron cargar los artículos");
   return { posts: json.posts ?? [], isAdmin: Boolean(json.isAdmin) };

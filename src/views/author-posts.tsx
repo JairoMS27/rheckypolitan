@@ -9,7 +9,6 @@ import { SECTIONS, sectionLabel } from "@/lib/sections";
 import {
   authorPostEditPath,
   authorPostNewPath,
-  authorPostsListPath,
 } from "@/lib/dashboard-paths";
 import {
   deleteAuthorPost,
@@ -20,14 +19,12 @@ import { toast } from "sonner";
 
 function PostsList() {
   const [rows, setRows] = useState<AuthorPostRow[] | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [filter, setFilter] = useState<string>("all");
 
   const load = async () => {
     try {
-      const { posts, isAdmin: admin } = await fetchAuthorPosts();
+      const { posts } = await fetchAuthorPosts();
       setRows(posts);
-      setIsAdmin(admin);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Error al cargar";
       toast.error(message);
@@ -44,7 +41,7 @@ function PostsList() {
     try {
       await deleteAuthorPost(r.id);
       toast.success("Eliminado");
-      load();
+      void load();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "No se pudo borrar");
     }
@@ -57,14 +54,12 @@ function PostsList() {
       <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Artículos
+            Tu espacio
           </p>
-          <h1 className="mt-1 font-display text-4xl">
-            {isAdmin ? "Todos los artículos" : "Mis artículos"}
-          </h1>
+          <h1 className="mt-1 font-display text-4xl">Mis artículos</h1>
           <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-            Cualquier cuenta puede publicar artículos e imágenes aquí. Las revistas digitales
-            (números) solo las gestiona el equipo admin.
+            Aquí están todos tus artículos: borradores y publicados. Crea, edita o elimina solo
+            lo tuyo — nadie más verá este listado.
           </p>
         </div>
         <Link href={authorPostNewPath()}>
@@ -104,10 +99,12 @@ function PostsList() {
         <p className="font-mono text-xs text-muted-foreground">Cargando…</p>
       ) : filtered.length === 0 ? (
         <div className="border border-dashed border-foreground/30 px-6 py-20 text-center">
-          <p className="font-display text-xl">Aún no hay artículos.</p>
-          <p className="mt-2 text-sm text-muted-foreground">Cualquier cuenta puede publicar el primero.</p>
+          <p className="font-display text-xl">Todavía no has publicado nada.</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Cuando escribas tu primer artículo, aparecerá aquí listo para editar.
+          </p>
           <Link href={authorPostNewPath()} className="mt-6 inline-block">
-            <Button>Publicar artículo</Button>
+            <Button>Escribir mi primer artículo</Button>
           </Link>
         </div>
       ) : (
@@ -151,9 +148,6 @@ function PostsList() {
           ))}
         </ul>
       )}
-      <p className="mt-8 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        Espacio de autor: {authorPostsListPath()} · revistas solo en /admin
-      </p>
     </div>
   );
 }

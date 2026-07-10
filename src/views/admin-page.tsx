@@ -108,12 +108,19 @@ function Inner() {
           <>
             Aquí gestionas las <strong className="font-medium text-foreground">revistas digitales</strong>{" "}
             (números con portada y páginas). Los{" "}
-            <strong className="font-medium text-foreground">artículos</strong> de sección viven en{" "}
+            <strong className="font-medium text-foreground">artículos de todos los autores</strong> están en{" "}
+            <Link
+              href="/admin/posts"
+              className="text-[#B22234] underline underline-offset-2 hover:text-[#8B1A29]"
+            >
+              Artículos
+            </Link>
+            ; cada autor gestiona los suyos en{" "}
             <Link
               href={authorPostsListPath()}
               className="text-[#B22234] underline underline-offset-2 hover:text-[#8B1A29]"
             >
-              /publicar
+              Mis artículos
             </Link>
             .
           </>
