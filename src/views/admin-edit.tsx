@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { pad, publicUrl } from "@/lib/storage";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-dialog";
 import { GripVertical, X } from "lucide-react";
 import {
   IssueContentEditor,
@@ -22,6 +23,7 @@ type Page = { id: string; index: number; image_path: string };
 function EditIssue() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
+  const confirm = useConfirm();
   const [number, setNumber] = useState("");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
@@ -125,7 +127,13 @@ function EditIssue() {
   };
 
   const removePage = async (page: Page) => {
-    if (!confirm("¿Quitar esta página?")) return;
+    const ok = await confirm({
+      title: "¿Quitar esta página?",
+      description: "La imagen se eliminará del almacenamiento.",
+      confirmLabel: "Quitar",
+      tone: "danger",
+    });
+    if (!ok) return;
     await supabase.storage.from("magazines").remove([page.image_path]);
     await supabase.from("pages").delete().eq("id", page.id);
     const next = pages.filter((p) => p.id !== page.id);

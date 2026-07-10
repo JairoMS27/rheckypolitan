@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { UserAvatar } from "@/components/user-avatar";
+import { EmojiPicker } from "@/components/emoji-picker";
+import { useConfirm } from "@/components/confirm-dialog";
 import { profilePath } from "@/lib/username";
 
 type ProfileBits = {
@@ -27,11 +29,6 @@ type CommentRow = {
   likeCount: number;
   likedByMe: boolean;
 };
-
-const EMOJIS = [
-  "😀", "😂", "😍", "🔥", "👏", "❤️", "😮", "😢", "🤔", "✨",
-  "🥃", "📰", "✍️", "💯", "🙌", "👀", "😎", "🎉", "💀", "🫡",
-];
 
 function timeAgo(dateStr: string): string {
   const now = Date.now();
@@ -122,34 +119,27 @@ function Composer({
           rows={2}
           className="w-full resize-none bg-transparent px-4 py-3 text-sm leading-relaxed text-foreground placeholder:text-foreground/30 focus:outline-none"
         />
-        {showEmoji && (
-          <div className="flex flex-wrap gap-1 border-t border-foreground/10 px-3 py-2">
-            {EMOJIS.map((e) => (
-              <button
-                key={e}
-                type="button"
-                onClick={() => insertEmoji(e)}
-                className="rounded px-1.5 py-0.5 text-lg leading-none transition hover:bg-muted"
-                aria-label={`Insertar ${e}`}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="flex items-center justify-between gap-2 border-t border-foreground/10 px-3 py-2">
-          <div className="flex items-center gap-1">
+        <div className="relative flex items-center justify-between gap-2 border-t border-foreground/10 px-3 py-2">
+          <div className="relative flex items-center gap-1">
             <button
               type="button"
               onClick={() => setShowEmoji((v) => !v)}
               className={`inline-flex h-8 w-8 items-center justify-center rounded transition ${
-                showEmoji ? "bg-muted text-[#B22234]" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                showEmoji
+                  ? "bg-muted text-[#B22234]"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
               title="Emojis"
-              aria-label="Abrir emojis"
+              aria-label="Abrir selector de emojis"
+              aria-expanded={showEmoji}
             >
               <SmilePlus className="h-4 w-4" />
             </button>
+            <EmojiPicker
+              open={showEmoji}
+              onClose={() => setShowEmoji(false)}
+              onPick={(emoji) => insertEmoji(emoji)}
+            />
           </div>
           <div className="flex items-center gap-2">
             {onCancel && (
@@ -331,6 +321,7 @@ function CommentCard({
 export function CommentsSection({ postId }: { postId: string }) {
   const pathname = usePathname();
   const { user, loading: authLoading } = useAuth();
+  const confirm = useConfirm();
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -505,7 +496,13 @@ export function CommentsSection({ postId }: { postId: string }) {
   };
 
   const handleDelete = async (commentId: string) => {
-    if (!confirm("¿Eliminar este comentario?")) return;
+    const ok = await confirm({
+      title: "¿Eliminar este comentario?",
+      description: "Se borrará de forma permanente, incluidas las respuestas anidadas.",
+      confirmLabel: "Eliminar",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
       const { error } = await supabase.from("comments").delete().eq("id", commentId);
       if (error) throw error;

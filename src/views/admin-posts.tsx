@@ -18,6 +18,7 @@ import {
 } from "@/lib/author-api";
 import { toast } from "sonner";
 import { profilePath } from "@/lib/username";
+import { useConfirm } from "@/components/confirm-dialog";
 
 function authorLabel(r: AuthorPostRow): string {
   return (
@@ -29,6 +30,7 @@ function authorLabel(r: AuthorPostRow): string {
 }
 
 function PostsAdmin() {
+  const confirm = useConfirm();
   const [rows, setRows] = useState<AuthorPostRow[] | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [authorFilter, setAuthorFilter] = useState<string>("all");
@@ -49,7 +51,13 @@ function PostsAdmin() {
   }, []);
 
   const remove = async (r: AuthorPostRow) => {
-    if (!confirm(`¿Borrar "${r.title}"?`)) return;
+    const ok = await confirm({
+      title: `¿Borrar «${r.title}»?`,
+      description: "El artículo se eliminará de forma permanente.",
+      confirmLabel: "Borrar",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
       await deleteAuthorPost(r.id);
       toast.success("Eliminado");

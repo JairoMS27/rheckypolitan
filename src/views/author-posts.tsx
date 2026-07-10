@@ -16,8 +16,10 @@ import {
   type AuthorPostRow,
 } from "@/lib/author-api";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-dialog";
 
 function PostsList() {
+  const confirm = useConfirm();
   const [rows, setRows] = useState<AuthorPostRow[] | null>(null);
   const [filter, setFilter] = useState<string>("all");
 
@@ -37,7 +39,13 @@ function PostsList() {
   }, []);
 
   const remove = async (r: AuthorPostRow) => {
-    if (!confirm(`¿Borrar "${r.title}"?`)) return;
+    const ok = await confirm({
+      title: `¿Borrar «${r.title}»?`,
+      description: "El artículo y sus imágenes se eliminarán de forma permanente.",
+      confirmLabel: "Borrar",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
       await deleteAuthorPost(r.id);
       toast.success("Eliminado");

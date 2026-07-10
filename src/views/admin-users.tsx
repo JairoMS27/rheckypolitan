@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { RegisteredUser } from "@/lib/admin-users.functions";
 import { RedactorBadge } from "@/components/redactor-badge";
+import { useConfirm } from "@/components/confirm-dialog";
 
 async function authFetch(url: string, init?: RequestInit) {
   const { data: sess } = await supabase.auth.getSession();
@@ -34,6 +35,7 @@ async function authFetch(url: string, init?: RequestInit) {
 }
 
 function UsersAdmin() {
+  const confirm = useConfirm();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["registered-users"],
     queryFn: () =>
@@ -66,7 +68,12 @@ function UsersAdmin() {
   };
 
   const promote = async (u: RegisteredUser) => {
-    if (!confirm(`¿Ascender a redactor a ${u.email}?`)) return;
+    const ok = await confirm({
+      title: `¿Ascender a redactor a ${u.email}?`,
+      description: "Podrá publicar artículos y acceder a herramientas de redacción.",
+      confirmLabel: "Ascender",
+    });
+    if (!ok) return;
     setBusyId(u.id);
     try {
       await authFetch("/api/admin/users", {
@@ -83,7 +90,13 @@ function UsersAdmin() {
   };
 
   const demote = async (u: RegisteredUser) => {
-    if (!confirm(`¿Quitar rol de redactor a ${u.email}?`)) return;
+    const ok = await confirm({
+      title: `¿Quitar rol de redactor a ${u.email}?`,
+      description: "Perderá privilegios de redacción, no la cuenta.",
+      confirmLabel: "Quitar rol",
+      tone: "danger",
+    });
+    if (!ok) return;
     setBusyId(u.id);
     try {
       await authFetch("/api/admin/users", {
@@ -104,7 +117,13 @@ function UsersAdmin() {
       toast.error("No se pueden eliminar admins");
       return;
     }
-    if (!confirm(`¿Eliminar la cuenta ${u.email}? Esta acción no se puede deshacer.`)) return;
+    const ok = await confirm({
+      title: `¿Eliminar la cuenta ${u.email}?`,
+      description: "Esta acción no se puede deshacer.",
+      confirmLabel: "Eliminar cuenta",
+      tone: "danger",
+    });
+    if (!ok) return;
     setBusyId(u.id);
     try {
       await authFetch("/api/admin/users", {

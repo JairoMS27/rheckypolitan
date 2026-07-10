@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { publicUrl } from "@/lib/storage";
 import { authorPostsListPath } from "@/lib/dashboard-paths";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-dialog";
 
 type Issue = {
   id: string;
@@ -28,6 +29,7 @@ function AdminIndex() {
 }
 
 function Inner() {
+  const confirm = useConfirm();
   const [issues, setIssues] = useState<Issue[] | null>(null);
 
   const load = async () => {
@@ -43,8 +45,13 @@ function Inner() {
   }, []);
 
   const remove = async (issue: Issue) => {
-    if (!confirm(`¿Borrar el N.º ${issue.number}? Se eliminarán también todas sus páginas.`))
-      return;
+    const ok = await confirm({
+      title: `¿Borrar el N.º ${issue.number}?`,
+      description: "Se eliminarán también todas sus páginas. Esta acción no se puede deshacer.",
+      confirmLabel: "Borrar revista",
+      tone: "danger",
+    });
+    if (!ok) return;
     // delete storage folder
     const { data: files } = await supabase.storage
       .from("magazines")
@@ -66,12 +73,13 @@ function Inner() {
   };
 
   const notify = async (issue: Issue) => {
-    if (
-      !confirm(
-        `¿Enviar aviso del Nº${issue.number} a todos los suscriptores? Esta acción no se puede deshacer.`,
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: `¿Avisar del Nº${issue.number}?`,
+      description:
+        "Se enviará un correo a todos los suscriptores. Esta acción no se puede deshacer.",
+      confirmLabel: "Enviar aviso",
+    });
+    if (!ok) return;
     const { data: sess } = await supabase.auth.getSession();
     const token = sess.session?.access_token;
     if (!token) {

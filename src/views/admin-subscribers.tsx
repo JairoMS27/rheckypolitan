@@ -6,6 +6,7 @@ import { AdminEmptyState, AdminPageHeader } from "@/components/admin-page-header
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useConfirm } from "@/components/confirm-dialog";
 
 type Subscriber = {
   id: string;
@@ -14,6 +15,7 @@ type Subscriber = {
 };
 
 function Inner() {
+  const confirm = useConfirm();
   const [subs, setSubs] = useState<Subscriber[] | null>(null);
   const [filter, setFilter] = useState("");
 
@@ -35,7 +37,13 @@ function Inner() {
   }, []);
 
   const remove = async (s: Subscriber) => {
-    if (!confirm(`¿Eliminar a ${s.email} de la newsletter?`)) return;
+    const ok = await confirm({
+      title: `¿Eliminar a ${s.email}?`,
+      description: "Dejará de recibir la newsletter.",
+      confirmLabel: "Eliminar",
+      tone: "danger",
+    });
+    if (!ok) return;
     const { error } = await supabase.from("newsletter_subscribers").delete().eq("id", s.id);
     if (error) {
       toast.error(error.message);
