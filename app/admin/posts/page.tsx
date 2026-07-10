@@ -1,11 +1,6 @@
-import type { Metadata } from "next";
-import { AdminPostsPage } from "@/views/admin-posts";
-
-export const metadata: Metadata = {
-  title: "Admin — Noticias",
-  robots: { index: false },
-};
+import { redirect } from "next/navigation";
+import { authorPostsListPath } from "@/lib/dashboard-paths";
 
 export default function Page() {
-  return <AdminPostsPage />;
+  redirect(authorPostsListPath());
 }

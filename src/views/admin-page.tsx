@@ -102,9 +102,16 @@ function Inner() {
       <div className="mb-10 flex items-end justify-between">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Revistas
+            Panel admin · Revistas
           </p>
-          <h2 className="mt-1 font-display text-4xl">Archivo</h2>
+          <h2 className="mt-1 font-display text-4xl">Números de la revista</h2>
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+            Gestión de revistas digitales (issues). Los artículos de sección se publican en{" "}
+            <Link href="/publicar" className="underline underline-offset-2 hover:text-[#B22234]">
+              /publicar
+            </Link>
+            .
+          </p>
         </div>
         <Link href="/admin/new">
           <Button>+ Nueva revista</Button>

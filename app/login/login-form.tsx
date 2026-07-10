@@ -1,29 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-
-type AppRole = "admin" | "redactor";
-
-async function resolveDestination(userId: string): Promise<string> {
-  const { data: roles, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId);
-
-  if (error) throw error;
-
-  const roleSet = new Set((roles ?? []).map((r) => r.role as AppRole));
-  if (roleSet.has("admin")) return "/admin";
-  if (roleSet.has("redactor")) return "/admin/posts";
-  return "/";
-}
+import { HOME_PATH, postLoginDestination } from "@/lib/dashboard-paths";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,7 +28,11 @@ export function LoginForm() {
       if (error) throw error;
       if (!data.user) throw new Error("No se pudo iniciar sesión");
 
-      const destination = await resolveDestination(data.user.id);
+      const next = searchParams.get("next");
+      const safeNext =
+        next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+      // Always home for role-entry login; honor safe ?next= for deep links (e.g. /publicar).
+      const destination = safeNext ?? postLoginDestination();
       router.replace(destination);
       router.refresh();
     } catch (err) {
@@ -67,7 +57,7 @@ export function LoginForm() {
 
       <div className="mx-auto flex min-h-[calc(100vh-8px)] w-full max-w-md flex-col justify-center px-6 py-16">
         <Link
-          href="/"
+          href={HOME_PATH}
           className="mb-10 font-display text-3xl font-semibold tracking-tight hover:text-[#B22234]"
         >
           Rheckypolitan
@@ -78,7 +68,7 @@ export function LoginForm() {
         </p>
         <h1 className="mt-2 font-display text-4xl leading-tight">Iniciar sesión</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          Correo y contraseña para entrar al archivo y al panel editorial.
+          Entra con tu correo. Después podrás publicar artículos desde tu perfil.
         </p>
 
         <form onSubmit={onSubmit} className="mt-10 space-y-6">
@@ -134,7 +124,7 @@ export function LoginForm() {
         </form>
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
-          <Link href="/" className="underline underline-offset-2 hover:text-[#B22234]">
+          <Link href={HOME_PATH} className="underline underline-offset-2 hover:text-[#B22234]">
             Volver al archivo
           </Link>
         </p>

@@ -1,13 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { MaintenanceToggle } from "@/components/maintenance/maintenance-toggle";
+import { authorPostsListPath, HOME_PATH } from "@/lib/dashboard-paths";
 
+/**
+ * Staff dashboard shell: revistas, periódico and site tools.
+ * Article publishing for authors lives under /publicar (AuthorShell).
+ */
 export function AdminShell({
   children,
   adminOnly = false,
@@ -17,6 +22,7 @@ export function AdminShell({
 }) {
   const { user, isAdmin, isRedactor, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   if (loading) {
     return (
@@ -45,8 +51,14 @@ export function AdminShell({
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
         <p className="font-display text-2xl">Sección sólo para admin</p>
-        <Link href="/admin/posts" className="text-xs uppercase tracking-widest underline">
-          Ir a Noticias
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Aquí se gestionan revistas y herramientas de sitio. Tus artículos están en Publicar.
+        </p>
+        <Link
+          href={authorPostsListPath()}
+          className="text-xs uppercase tracking-widest underline"
+        >
+          Ir a mis artículos
         </Link>
       </div>
     );
@@ -55,44 +67,61 @@ export function AdminShell({
   if (!isStaff) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="font-display text-2xl">Acceso restringido</p>
+        <p className="font-display text-2xl">Panel de administración</p>
         <p className="max-w-sm text-sm text-muted-foreground">
-          Esta zona es solo para el equipo editorial.
+          Esta zona es solo para el equipo editorial (revistas y staff). Para publicar artículos
+          usa tu espacio de autor.
         </p>
-        <Link href="/" className="text-xs uppercase tracking-widest underline">
+        <Link
+          href={authorPostsListPath()}
+          className="text-xs uppercase tracking-widest underline"
+        >
+          Publicar artículos →
+        </Link>
+        <Link href={HOME_PATH} className="text-xs uppercase tracking-widest text-muted-foreground">
           Volver al inicio
         </Link>
       </div>
     );
   }
 
-  const roleLabel = isAdmin ? "Admin" : "Redactor";
+  const roleLabel = isAdmin ? "Admin · revistas" : "Staff";
+
+  const linkClass = (active: boolean) =>
+    `font-mono text-[10px] uppercase tracking-widest transition hover:text-[#B22234] ${
+      active ? "text-foreground underline underline-offset-4" : "text-muted-foreground"
+    }`;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-foreground">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-4">
-          <div className="flex items-baseline gap-6">
-            <Link href="/" className="font-display text-xl">
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-4 px-6 py-4">
+          <div className="flex items-baseline gap-4">
+            <Link href={HOME_PATH} className="font-display text-xl">
               Rheckypolitan
             </Link>
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#B22234]">
               {roleLabel}
             </span>
           </div>
-          <div className="flex items-center gap-4">
+          <nav className="flex flex-wrap items-center gap-4">
             {isAdmin && (
-              <Link href="/admin" className="text-xs uppercase tracking-widest hover:underline">
+              <Link href="/admin" className={linkClass(pathname === "/admin")}>
                 Revistas
               </Link>
             )}
-            <Link href="/admin/posts" className="text-xs uppercase tracking-widest hover:underline">
-              Noticias
-            </Link>
+            {isAdmin && (
+              <Link
+                href="/admin/new"
+                className={linkClass(pathname === "/admin/new" || pathname?.includes("/edit"))}
+              >
+                Nueva revista
+              </Link>
+            )}
             {isStaff && (
               <Link
                 href="/admin/newspaper"
-                className="text-xs uppercase tracking-widest hover:underline"
+                className={linkClass(pathname === "/admin/newspaper")}
               >
                 Periódico
               </Link>
@@ -100,31 +129,39 @@ export function AdminShell({
             {isAdmin && (
               <>
                 <MaintenanceToggle />
-                <Link
-                  href="/admin/users"
-                  className="text-xs uppercase tracking-widest hover:underline"
-                >
+                <Link href="/admin/users" className={linkClass(pathname === "/admin/users")}>
                   Redactores
                 </Link>
                 <Link
                   href="/admin/subscribers"
-                  className="text-xs uppercase tracking-widest hover:underline"
+                  className={linkClass(pathname === "/admin/subscribers")}
                 >
                   Suscriptores
                 </Link>
               </>
             )}
+            <Link
+              href={authorPostsListPath()}
+              className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+            >
+              Artículos →
+            </Link>
             <Button
               variant="outline"
               size="sm"
               onClick={async () => {
                 await supabase.auth.signOut();
-                router.push("/");
+                router.push(HOME_PATH);
               }}
             >
               Salir
             </Button>
-          </div>
+          </nav>
+        </div>
+        <div className="border-t border-foreground/10 bg-muted/30 px-6 py-2">
+          <p className="mx-auto max-w-[1400px] font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            Panel staff · revistas y sitio · los artículos de autor viven en /publicar
+          </p>
         </div>
       </header>
       <main className="mx-auto max-w-[1400px] px-6 py-10">{children}</main>

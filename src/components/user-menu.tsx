@@ -4,17 +4,22 @@ import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  ADMIN_DASHBOARD_PATH,
+  authorPostNewPath,
+  authorPostsListPath,
+} from "@/lib/dashboard-paths";
 
 export function UserMenu() {
-  const { user, loading } = useAuth();
+  const { user, isAdmin, isRedactor, loading } = useAuth();
   const [profile, setProfile] = useState<{
     display_name: string;
     avatar_url: string | null;
   } | null>(null);
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const isStaff = isAdmin || isRedactor;
 
-  // Fetch profile when user changes
   useEffect(() => {
     if (!user) {
       setProfile(null);
@@ -35,7 +40,6 @@ export function UserMenu() {
       });
   }, [user]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -71,7 +75,7 @@ export function UserMenu() {
   return (
     <div ref={menuRef} className="relative flex items-center gap-3">
       <Link
-        href="/admin/posts/new"
+        href={authorPostNewPath()}
         className="hidden items-center gap-1.5 border border-[#B22234] bg-[#B22234] px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white transition hover:bg-[#8B1A29] hover:border-[#8B1A29] sm:inline-flex"
       >
         <span aria-hidden>✎</span> Publicar artículo
@@ -98,7 +102,7 @@ export function UserMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 min-w-[200px] border border-foreground/15 bg-background shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-2 min-w-[220px] border border-foreground/15 bg-background shadow-lg">
           <div className="border-b border-foreground/10 px-4 py-3">
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               Sesión activa
@@ -106,14 +110,14 @@ export function UserMenu() {
             <p className="mt-1 text-sm font-medium text-foreground">{profile.display_name}</p>
           </div>
           <Link
-            href="/admin/posts/new"
+            href={authorPostNewPath()}
             onClick={() => setOpen(false)}
             className="block w-full px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-[#B22234] transition hover:bg-muted sm:hidden"
           >
             ✎ Publicar artículo
           </Link>
           <Link
-            href="/admin/posts"
+            href={authorPostsListPath()}
             onClick={() => setOpen(false)}
             className="block w-full px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
@@ -124,13 +128,22 @@ export function UserMenu() {
             onClick={() => setOpen(false)}
             className="block w-full px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
-            Editar perfil
+            Mi perfil
           </Link>
+          {isStaff && (
+            <Link
+              href={ADMIN_DASHBOARD_PATH}
+              onClick={() => setOpen(false)}
+              className="block w-full border-t border-foreground/10 px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              {isAdmin ? "Panel admin · revistas" : "Panel staff"}
+            </Link>
+          )}
           <button
             onClick={async () => {
               await supabase.auth.signOut();
               setOpen(false);
-              window.location.reload();
+              window.location.href = "/";
             }}
             className="w-full border-t border-foreground/10 px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-muted hover:text-[#B22234]"
           >

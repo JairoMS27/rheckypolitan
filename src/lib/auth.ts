@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/server";
+import { authorPostsListPath, isAdminRole, isStaffRole } from "@/lib/dashboard-paths";
 
 export type AppRole = "admin" | "redactor";
 
@@ -32,8 +33,9 @@ export async function requireAuth() {
     supabase: auth.supabase,
     userId: auth.userId,
     roles: auth.roles,
-    isAdmin: auth.roles.includes("admin"),
+    isAdmin: isAdminRole(auth.roles),
     isRedactor: auth.roles.includes("redactor"),
+    isStaff: isStaffRole(auth.roles),
   };
 }
 
@@ -45,13 +47,29 @@ export async function requireAdmin() {
   return auth;
 }
 
+/** Any logged-in user may use the author publish surface (`/publicar`). */
+export async function requireAuthPage() {
+  const auth = await getAuthUser();
+  if (!auth.userId) {
+    redirect("/login?next=/publicar");
+  }
+  return {
+    supabase: auth.supabase,
+    userId: auth.userId,
+    roles: auth.roles,
+    isAdmin: isAdminRole(auth.roles),
+    isRedactor: auth.roles.includes("redactor"),
+    isStaff: isStaffRole(auth.roles),
+  };
+}
+
 /** Server-side guard for any /admin page (admin or redactor). Redirects if not staff. */
 export async function requireStaffPage() {
   const auth = await getAuthUser();
   if (!auth.userId) {
     redirect("/login");
   }
-  const isAdmin = auth.roles.includes("admin");
+  const isAdmin = isAdminRole(auth.roles);
   const isRedactor = auth.roles.includes("redactor");
   if (!isAdmin && !isRedactor) {
     redirect("/");
@@ -65,11 +83,11 @@ export async function requireStaffPage() {
   };
 }
 
-/** Server-side guard for admin-only pages. Redirects redactors to posts. */
+/** Server-side guard for admin-only magazine/staff pages. */
 export async function requireAdminPage() {
   const auth = await requireStaffPage();
   if (!auth.isAdmin) {
-    redirect("/admin/posts");
+    redirect(authorPostsListPath());
   }
   return auth;
 }

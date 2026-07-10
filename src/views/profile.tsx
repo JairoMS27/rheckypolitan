@@ -6,10 +6,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  ADMIN_DASHBOARD_PATH,
+  authorPostNewPath,
+  authorPostsListPath,
+} from "@/lib/dashboard-paths";
 import { toast } from "sonner";
 
 export function ProfilePage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isAdmin, isRedactor, loading: authLoading } = useAuth();
+  const isStaff = isAdmin || isRedactor;
   const router = useRouter();
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -124,6 +130,33 @@ export function ProfilePage() {
         </span>
         <h1 className="mt-2 font-display text-4xl leading-tight">Mi perfil</h1>
         <p className="mt-2 text-sm text-muted-foreground">{user?.email}</p>
+
+        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          <Link
+            href={authorPostNewPath()}
+            className="border border-[#B22234] bg-[#B22234] px-4 py-4 text-center font-mono text-[10px] font-bold uppercase tracking-widest text-white transition hover:bg-[#8B1A29]"
+          >
+            ✎ Publicar artículo
+          </Link>
+          <Link
+            href={authorPostsListPath()}
+            className="border border-foreground/20 px-4 py-4 text-center font-mono text-[10px] uppercase tracking-widest transition hover:border-foreground hover:bg-muted"
+          >
+            Mis artículos
+          </Link>
+          {isStaff && (
+            <Link
+              href={ADMIN_DASHBOARD_PATH}
+              className="border border-foreground/20 px-4 py-4 text-center font-mono text-[10px] uppercase tracking-widest transition hover:border-foreground hover:bg-muted sm:col-span-2"
+            >
+              {isAdmin ? "Panel admin · revistas y staff" : "Panel staff"}
+            </Link>
+          )}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Los artículos se publican en <span className="font-mono">/publicar</span>. Las revistas
+          solo se gestionan en el panel de administración.
+        </p>
 
         <form onSubmit={handleSave} className="mt-10 space-y-8">
           <div>

@@ -5,7 +5,16 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin", "/admin/", "/email/", "/api/", "/unsubscribe"],
+      disallow: [
+        "/admin",
+        "/admin/",
+        "/publicar",
+        "/publicar/",
+        "/profile",
+        "/email/",
+        "/api/",
+        "/unsubscribe",
+      ],
     },
     sitemap: "https://rheckypolitan.es/sitemap.xml",
   };

@@ -1,12 +1,7 @@
-import type { Metadata } from "next";
-import { AdminPostsEditPage } from "@/views/admin-posts-edit";
-
-export const metadata: Metadata = {
-  title: "Admin — Editar noticia",
-  robots: { index: false },
-};
+import { redirect } from "next/navigation";
+import { authorPostEditPath } from "@/lib/dashboard-paths";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  await params;
-  return <AdminPostsEditPage />;
+  const { id } = await params;
+  redirect(authorPostEditPath(id));
 }

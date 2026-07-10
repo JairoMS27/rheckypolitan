@@ -19,6 +19,7 @@ import {
 import { RichEditor } from "@/components/rich-editor";
 import { SECTIONS, slugify, type SectionKey } from "@/lib/sections";
 import { useAuth } from "@/hooks/use-auth";
+import { authorPostsListPath } from "@/lib/dashboard-paths";
 
 export type PostInput = {
   id?: string;
@@ -35,7 +36,14 @@ export type PostInput = {
   author_id?: string | null;
 };
 
-export function PostForm({ initial }: { initial: PostInput }) {
+export function PostForm({
+  initial,
+  returnTo = authorPostsListPath(),
+}: {
+  initial: PostInput;
+  /** Where to go after save/cancel (author surface defaults to /publicar). */
+  returnTo?: string;
+}) {
   const router = useRouter();
   const { user } = useAuth();
   const [data, setData] = useState<PostInput>(initial);
@@ -110,7 +118,7 @@ export function PostForm({ initial }: { initial: PostInput }) {
         }
       }
       toast.success("Guardado");
-      router.push("/admin/posts");
+      router.push(returnTo);
     } catch (err: any) {
       toast.error(err.message ?? "Error al guardar");
     } finally {
@@ -285,9 +293,9 @@ export function PostForm({ initial }: { initial: PostInput }) {
 
       <div className="flex items-center gap-4 border-t border-foreground/20 pt-6">
         <Button type="submit" disabled={saving}>
-          {saving ? "Guardando…" : data.id ? "Guardar cambios" : "Publicar noticia"}
+          {saving ? "Guardando…" : data.id ? "Guardar cambios" : "Publicar artículo"}
         </Button>
-        <Button type="button" variant="outline" onClick={() => router.push("/admin/posts")}>
+        <Button type="button" variant="outline" onClick={() => router.push(returnTo)}>
           Cancelar
         </Button>
       </div>
