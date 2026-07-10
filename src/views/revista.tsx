@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { IssueCover } from "@/components/issue-cover";
+import { UserMenu } from "@/components/user-menu";
+import { publicUrl } from "@/lib/storage";
 
 export type IssueMeta = {
   number: number;
@@ -30,7 +33,18 @@ type Issue = {
 };
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+  return new Date(d).toLocaleDateString("es-ES", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatLongDate(d: string) {
+  return new Date(d).toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta }) {
@@ -53,7 +67,8 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
   }, [number]);
 
   const { prev, next } = useMemo(() => {
-    if (!allIssues || !issue) return { prev: null as Issue | null, next: null as Issue | null };
+    if (!allIssues || !issue)
+      return { prev: null as Issue | null, next: null as Issue | null };
     const sorted = [...allIssues].sort((a, b) => a.number - b.number);
     const idx = sorted.findIndex((i) => i.number === issue.number);
     return {
@@ -74,11 +89,14 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
 
   if (issue === null) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
-        <p className="font-display text-3xl">Número no encontrado</p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center text-foreground">
+        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
+          ★ Archivo
+        </p>
+        <p className="mt-3 font-display text-4xl">Número no encontrado</p>
         <Link
           href="/"
-          className="mt-6 font-mono text-[11px] uppercase tracking-widest underline-offset-4 hover:underline"
+          className="mt-8 font-mono text-[11px] uppercase tracking-widest underline-offset-4 hover:underline"
         >
           Volver al archivo →
         </Link>
@@ -88,229 +106,373 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
 
   const numFmt = String(issue.number).padStart(2, "0");
   void meta;
+  const summary = issue.summary ?? [];
+  const quotes = issue.quotes ?? [];
+  const credits = issue.credits ?? [];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div
-        className="h-2 w-full"
+        className="h-1.5 w-full"
         style={{
-          backgroundImage: "repeating-linear-gradient(to bottom, #B22234 0 2px, #ffffff 2px 4px)",
+          backgroundImage:
+            "repeating-linear-gradient(to right, #B22234 0 10px, #ffffff 10px 20px)",
         }}
         aria-hidden
       />
 
+      {/* Masthead */}
       <header className="border-b border-foreground">
-        <div className="mx-auto grid max-w-[1600px] grid-cols-3 items-center px-6 py-5">
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-5 py-3 md:px-8">
           <Link
             href="/"
-            className="justify-self-start font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground hover:text-[#B22234]"
+            className="font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground transition hover:text-[#B22234]"
           >
             ← Archivo
           </Link>
           <Link
             href="/"
-            className="justify-self-center font-display text-2xl font-semibold tracking-tight md:text-3xl"
+            className="font-display text-xl font-semibold tracking-tight md:text-2xl"
           >
             Rheckypolitan
           </Link>
-          <span className="justify-self-end font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-            ★ N.º {numFmt} ★
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="hidden font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground sm:inline">
+              N.º {numFmt}
+            </span>
+            <UserMenu />
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1600px] px-6 py-12 md:py-20">
-        <section className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16">
-          <div className="lg:col-span-7 lg:border-r lg:border-foreground/10 lg:pr-12">
-            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
-              ★ Edición · {formatDate(issue.published_at)}
-            </span>
-            <div className="mt-3 flex items-baseline gap-6">
-              <span className="font-display text-[clamp(5rem,12vw,11rem)] font-black leading-[0.85] text-[#B22234]">
-                {numFmt}
-              </span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-                Número
-              </span>
-            </div>
-            <h1 className="mt-6 font-display text-[clamp(2.25rem,5vw,4.5rem)] leading-[0.95] tracking-tight">
-              {issue.title}
-            </h1>
-            {issue.subtitle && (
-              <p className="mt-8 max-w-lg whitespace-pre-line text-base leading-relaxed text-foreground/80 md:text-lg">
-                {issue.subtitle}
-              </p>
-            )}
-            <div className="mt-10 flex flex-wrap items-center gap-6">
+      <main>
+        {/* Hero split: cover full height + issue meta */}
+        <section className="border-b border-foreground/15">
+          <div className="mx-auto grid max-w-[1400px] grid-cols-1 lg:grid-cols-12 lg:items-stretch">
+            {/* Cover column */}
+            <div className="relative min-h-[420px] bg-muted lg:col-span-5 lg:min-h-[min(85vh,780px)] xl:col-span-6">
               <Link
                 href={`/revista/${number}/leer`}
-                className="inline-flex items-center gap-3 bg-foreground px-6 py-4 font-mono text-[11px] font-bold uppercase tracking-widest text-background transition hover:bg-[#B22234]"
+                className="group absolute inset-0 block overflow-hidden"
+                aria-label={`Leer N.º ${numFmt}`}
               >
-                Leer número <span>→</span>
-              </Link>
-              <Link
-                href="/"
-                className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-              >
-                ← Volver al archivo
+                {issue.cover_path ? (
+                  <Image
+                    src={publicUrl(issue.cover_path)}
+                    alt={`Portada N.º ${numFmt}`}
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-cover transition duration-700 group-hover:scale-[1.03]"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center bg-foreground">
+                    <span className="font-display text-[10rem] text-background/15">
+                      {numFmt}
+                    </span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-80" />
+                <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-white/80">
+                  <span>Portada original</span>
+                  <span className="border border-white/40 bg-white/10 px-3 py-1.5 backdrop-blur-sm transition group-hover:border-white group-hover:bg-white group-hover:text-foreground">
+                    Abrir revista →
+                  </span>
+                </div>
               </Link>
             </div>
-          </div>
 
-          <div className="lg:col-span-5">
-            <Link
-              href={`/revista/${number}/leer`}
-              className="group block"
-              aria-label={`Leer N.º ${numFmt}`}
-            >
-              <IssueCover number={issue.number} coverPath={issue.cover_path} />
-            </Link>
-            <div className="mt-5 flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              <span>Portada original</span>
-              <span className="text-[#B22234]">✦</span>
-              <span>Pasa el ratón</span>
+            {/* Meta column */}
+            <div className="flex flex-col justify-between border-t border-foreground/10 lg:col-span-7 lg:border-t-0 xl:col-span-6">
+              <div className="p-6 md:p-10 lg:p-12">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="bg-[#B22234] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
+                    Edición
+                  </span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+                    {formatLongDate(issue.published_at)}
+                  </span>
+                </div>
+
+                <div className="mt-6 flex items-end gap-4">
+                  <span className="font-display text-[clamp(4.5rem,14vw,9rem)] font-black leading-[0.8] text-[#B22234]">
+                    {numFmt}
+                  </span>
+                  <span className="mb-3 font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Número
+                  </span>
+                </div>
+
+                <h1 className="mt-4 font-display text-[clamp(2rem,4.5vw,3.75rem)] font-normal leading-[0.95] tracking-tight">
+                  {issue.title}
+                </h1>
+
+                {issue.subtitle && (
+                  <p className="mt-6 max-w-lg whitespace-pre-line text-base leading-relaxed text-foreground/75 md:text-lg">
+                    {issue.subtitle}
+                  </p>
+                )}
+
+                <div className="mt-10 flex flex-wrap items-center gap-3">
+                  <Link
+                    href={`/revista/${number}/leer`}
+                    className="inline-flex items-center gap-3 border border-foreground bg-foreground px-6 py-3.5 font-mono text-[11px] font-bold uppercase tracking-widest text-background transition hover:border-[#B22234] hover:bg-[#B22234]"
+                  >
+                    Leer número →
+                  </Link>
+                  <Link
+                    href="/#archivo"
+                    className="border border-foreground/20 px-5 py-3.5 font-mono text-[11px] uppercase tracking-widest transition hover:border-foreground"
+                  >
+                    Ver archivo
+                  </Link>
+                </div>
+              </div>
+
+              {/* Mini nav prev/next inside hero */}
+              <div className="mt-auto grid grid-cols-2 border-t border-foreground/15">
+                <div className="border-r border-foreground/15 p-5 md:p-6">
+                  {prev ? (
+                    <Link href={`/revista/${prev.number}`} className="group block">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                        ← Anterior
+                      </span>
+                      <p className="mt-1 font-display text-base leading-tight group-hover:text-[#B22234] md:text-lg">
+                        N.º {String(prev.number).padStart(2, "0")} · {prev.title}
+                      </p>
+                    </Link>
+                  ) : (
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
+                      — primer número —
+                    </span>
+                  )}
+                </div>
+                <div className="p-5 text-right md:p-6">
+                  {next ? (
+                    <Link href={`/revista/${next.number}`} className="group block">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                        Siguiente →
+                      </span>
+                      <p className="mt-1 font-display text-base leading-tight group-hover:text-[#B22234] md:text-lg">
+                        N.º {String(next.number).padStart(2, "0")} · {next.title}
+                      </p>
+                    </Link>
+                  ) : (
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
+                      — último número —
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {issue.summary && issue.summary.length > 0 && (
-          <section className="mt-24 border-t border-foreground/15 pt-14">
-            <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
-                  ★ Sumario
-                </span>
-                <h3 className="mt-2 font-display text-4xl leading-tight md:text-5xl">
-                  Lo que vas a encontrar dentro.
-                </h3>
+        {/* Summary / table of contents */}
+        {summary.length > 0 && (
+          <section className="border-b border-foreground/15">
+            <div className="mx-auto max-w-[1400px] px-5 py-14 md:px-8 md:py-20">
+              <div className="mb-10 grid grid-cols-1 items-end gap-6 md:grid-cols-12">
+                <div className="md:col-span-8">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
+                    ★ Sumario
+                  </p>
+                  <h2 className="mt-2 font-display text-3xl leading-tight md:text-5xl">
+                    Lo que hay dentro
+                  </h2>
+                </div>
+                <div className="md:col-span-4 md:text-right">
+                  <Link
+                    href={`/revista/${number}/leer`}
+                    className="inline-flex font-mono text-[10px] uppercase tracking-widest text-muted-foreground underline-offset-4 hover:text-[#B22234] hover:underline"
+                  >
+                    Empezar a leer →
+                  </Link>
+                </div>
               </div>
-              <Link
-                href={`/revista/${number}/leer`}
-                className="font-mono text-[11px] uppercase tracking-widest underline-offset-4 hover:underline"
-              >
-                Empezar a leer →
-              </Link>
-            </div>
-            <ol className="divide-y divide-foreground/10 border-y border-foreground/15">
-              {issue.summary.map((s, i) => (
-                <li key={i} className="grid grid-cols-12 items-baseline gap-4 py-5">
-                  <span className="col-span-2 font-display text-3xl text-[#B22234] md:text-4xl">
-                    {s.p}
-                  </span>
-                  <span className="col-span-3 font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground md:col-span-2">
-                    {s.section}
-                  </span>
-                  <span className="col-span-7 font-display text-lg leading-snug md:col-span-8 md:text-xl">
-                    {s.title}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </section>
-        )}
 
-        {issue.show_quotes && issue.quotes && issue.quotes.length > 0 && (
-          <section className="mt-24 grid grid-cols-1 gap-10 md:grid-cols-2">
-            {issue.quotes.map((c, idx) => (
-              <blockquote
-                key={idx}
-                className="relative border-l-2 border-[#B22234] bg-muted p-8 pt-10"
-              >
-                <span
-                  aria-hidden
-                  className="absolute left-5 top-1 font-display text-7xl leading-none text-[#B22234]"
-                >
-                  “
-                </span>
-                <p className="font-display text-xl italic leading-snug md:text-2xl">{c.text}</p>
-                <footer className="mt-6 flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  <span className="text-foreground">— {c.author}</span>
-                  <span>{c.where}</span>
-                </footer>
-              </blockquote>
-            ))}
-          </section>
-        )}
-
-        {issue.credits && issue.credits.length > 0 && (
-          <section className="mt-24 border-y border-foreground/15 py-14">
-            <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
-              <div className="lg:col-span-3">
-                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
-                  ★ Créditos
-                </span>
-                <h3 className="mt-2 font-display text-3xl leading-tight md:text-4xl">
-                  Quién lo hizo posible.
-                </h3>
-              </div>
-              <ul className="grid grid-cols-1 gap-x-8 gap-y-6 md:grid-cols-2 lg:col-span-9">
-                {issue.credits.map((c, i) => (
-                  <li key={i} className="flex flex-col gap-1 border-t border-foreground/10 pt-3">
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {c.rol}
+              <ol className="border border-foreground/15">
+                {summary.map((s, i) => (
+                  <li
+                    key={i}
+                    className="grid grid-cols-12 items-baseline gap-3 border-b border-foreground/10 px-4 py-5 last:border-b-0 transition hover:bg-muted/30 md:gap-6 md:px-6"
+                  >
+                    <span className="col-span-2 font-display text-2xl text-[#B22234] md:text-4xl">
+                      {s.p || String(i + 1).padStart(2, "0")}
                     </span>
-                    <span className="font-display text-lg leading-tight">{c.nombres}</span>
+                    <span className="col-span-10 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground md:col-span-3">
+                      {s.section || "Sección"}
+                    </span>
+                    <span className="col-span-12 font-display text-lg leading-snug md:col-span-7 md:text-xl">
+                      {s.title}
+                    </span>
                   </li>
                 ))}
+              </ol>
+            </div>
+          </section>
+        )}
+
+        {/* Quotes */}
+        {issue.show_quotes !== false && quotes.length > 0 && (
+          <section className="border-b border-foreground/15 bg-muted/20">
+            <div className="mx-auto max-w-[1400px] px-5 py-14 md:px-8 md:py-20">
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
+                ★ Citas
+              </p>
+              <h2 className="mt-2 font-display text-3xl leading-tight md:text-4xl">
+                Fragmentos del número
+              </h2>
+              <div className="mt-10 grid grid-cols-1 gap-0 border border-foreground/15 md:grid-cols-2">
+                {quotes.map((c, idx) => (
+                  <blockquote
+                    key={idx}
+                    className={`relative bg-background p-7 md:p-9 ${
+                      idx % 2 === 0 ? "md:border-r md:border-foreground/15" : ""
+                    } ${idx < quotes.length - 1 ? "border-b border-foreground/15" : ""} ${
+                      idx < quotes.length - (quotes.length % 2 === 0 ? 2 : 1)
+                        ? "md:border-b"
+                        : "md:border-b-0"
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className="font-display text-6xl leading-none text-[#B22234]/35"
+                    >
+                      “
+                    </span>
+                    <p className="-mt-3 font-display text-xl italic leading-snug md:text-2xl">
+                      {c.text}
+                    </p>
+                    <footer className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-foreground/10 pt-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      <span className="text-foreground">— {c.author}</span>
+                      {c.where ? <span>{c.where}</span> : null}
+                    </footer>
+                  </blockquote>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Credits */}
+        {credits.length > 0 && (
+          <section className="border-b border-foreground/15">
+            <div className="mx-auto max-w-[1400px] px-5 py-14 md:px-8 md:py-20">
+              <div className="grid grid-cols-1 gap-10 lg:grid-cols-12">
+                <div className="lg:col-span-4">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
+                    ★ Créditos
+                  </p>
+                  <h2 className="mt-2 font-display text-3xl leading-tight md:text-4xl">
+                    Quién lo hizo posible
+                  </h2>
+                </div>
+                <ul className="grid grid-cols-1 gap-x-8 gap-y-0 sm:grid-cols-2 lg:col-span-8">
+                  {credits.map((c, i) => (
+                    <li
+                      key={i}
+                      className="border-t border-foreground/10 py-4 first:border-t sm:first:border-t"
+                    >
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                        {c.rol}
+                      </span>
+                      <p className="mt-1 font-display text-lg leading-tight">
+                        {c.nombres}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* CTA strip */}
+        <section className="bg-foreground text-background">
+          <div className="mx-auto flex max-w-[1400px] flex-col items-start justify-between gap-6 px-5 py-12 md:flex-row md:items-center md:px-8 md:py-14">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-background/50">
+                ★ Listo para hojear
+              </p>
+              <h2 className="mt-2 font-display text-3xl leading-tight md:text-4xl">
+                N.º {numFmt} · {issue.title}
+              </h2>
+            </div>
+            <Link
+              href={`/revista/${number}/leer`}
+              className="inline-flex items-center gap-3 border border-background bg-background px-6 py-3.5 font-mono text-[11px] font-bold uppercase tracking-widest text-foreground transition hover:border-[#ff8a8a] hover:bg-[#ff8a8a]"
+            >
+              Abrir el número →
+            </Link>
+          </div>
+        </section>
+
+        {/* More issues */}
+        {allIssues && allIssues.length > 1 && (
+          <section>
+            <div className="mx-auto max-w-[1400px] px-5 py-14 md:px-8 md:py-16">
+              <div className="mb-8 flex items-end justify-between gap-4">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
+                    ★ También en el archivo
+                  </p>
+                  <h2 className="mt-2 font-display text-3xl md:text-4xl">
+                    Otros números
+                  </h2>
+                </div>
+                <Link
+                  href="/#archivo"
+                  className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-[#B22234]"
+                >
+                  Ver todos →
+                </Link>
+              </div>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {allIssues
+                  .filter((i) => i.number !== issue.number)
+                  .slice(0, 5)
+                  .map((i) => (
+                    <li key={i.id}>
+                      <Link
+                        href={`/revista/${i.number}`}
+                        className="group block"
+                      >
+                        <IssueCover
+                          number={i.number}
+                          coverPath={i.cover_path}
+                        />
+                        <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-[#B22234]">
+                          N.º {String(i.number).padStart(2, "0")}
+                        </p>
+                        <p className="mt-0.5 font-display text-base leading-tight group-hover:text-[#B22234] md:text-lg">
+                          {i.title}
+                        </p>
+                      </Link>
+                    </li>
+                  ))}
               </ul>
             </div>
           </section>
         )}
-
-        <nav className="mt-16 grid grid-cols-1 items-center gap-6 md:grid-cols-3">
-          <div className="md:justify-self-start">
-            {prev ? (
-              <Link href={`/revista/${prev.number}`} className="group block">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  ← Anterior
-                </span>
-                <p className="mt-1 font-display text-xl group-hover:text-[#B22234]">
-                  N.º {String(prev.number).padStart(2, "0")} · {prev.title}
-                </p>
-              </Link>
-            ) : (
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/40">
-                — primer número —
-              </span>
-            )}
-          </div>
-          <Link
-            href="/"
-            className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground underline-offset-4 hover:text-foreground hover:underline md:justify-self-center"
-          >
-            Volver al archivo
-          </Link>
-          <div className="md:justify-self-end md:text-right">
-            {next ? (
-              <Link href={`/revista/${next.number}`} className="group block">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Siguiente →
-                </span>
-                <p className="mt-1 font-display text-xl group-hover:text-[#B22234]">
-                  N.º {String(next.number).padStart(2, "0")} · {next.title}
-                </p>
-              </Link>
-            ) : (
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/40">
-                — último número —
-              </span>
-            )}
-          </div>
-        </nav>
       </main>
 
       <footer className="border-t border-foreground">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-center gap-3 px-6 py-6 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-          <span>★</span>
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-5 py-6 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground md:px-8">
           <span>© {new Date().getFullYear()} Rheckypolitan</span>
-          <span>★</span>
+          <span className="flex items-center gap-2">
+            <span>★</span>
+            <span>N.º {numFmt}</span>
+            <span>★</span>
+          </span>
         </div>
       </footer>
 
       <div
-        className="h-2 w-full"
+        className="h-1.5 w-full"
         style={{
-          backgroundImage: "repeating-linear-gradient(to bottom, #B22234 0 2px, #ffffff 2px 4px)",
+          backgroundImage:
+            "repeating-linear-gradient(to right, #B22234 0 10px, #ffffff 10px 20px)",
         }}
         aria-hidden
       />

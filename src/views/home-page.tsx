@@ -283,15 +283,15 @@ export function HomePage() {
           Rheckypolitan — Archivo de crónicas desde Kentucky
         </h1>
 
-        {/* HERO — latest issue as newspaper lead */}
+        {/* HERO — cover fills full height of the row (matches tirada column) */}
         <section className="border-b border-foreground/15">
-          <div className="mx-auto grid max-w-[1400px] grid-cols-1 lg:grid-cols-12">
-            {/* Lead story */}
-            <div className="relative lg:col-span-8 lg:border-r lg:border-foreground/15">
+          <div className="mx-auto grid max-w-[1400px] grid-cols-1 lg:grid-cols-12 lg:items-stretch">
+            {/* Lead story — stretches to aside height */}
+            <div className="relative min-h-[480px] lg:col-span-8 lg:min-h-0 lg:border-r lg:border-foreground/15">
               {latest ? (
                 <Link
                   href={`/revista/${latest.number}`}
-                  className="group relative block min-h-[420px] overflow-hidden bg-muted md:min-h-[520px]"
+                  className="group absolute inset-0 block overflow-hidden bg-muted"
                 >
                   {latest.cover_path ? (
                     <Image
@@ -309,7 +309,7 @@ export function HomePage() {
                       </span>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/15" />
                   <div className="absolute inset-x-0 bottom-0 p-6 md:p-10">
                     <div className="mb-3 flex flex-wrap items-center gap-2">
                       <span className="bg-[#B22234] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
@@ -333,7 +333,7 @@ export function HomePage() {
                   </div>
                 </Link>
               ) : (
-                <div className="flex min-h-[360px] items-center justify-center bg-muted px-6">
+                <div className="flex h-full min-h-[360px] items-center justify-center bg-muted px-6">
                   <div className="text-center">
                     <p className="font-display text-3xl">Preparando el primer número</p>
                     <p className="mt-2 text-sm text-muted-foreground">
@@ -344,7 +344,7 @@ export function HomePage() {
               )}
             </div>
 
-            {/* Side column */}
+            {/* Side column — defines row height */}
             <aside className="flex flex-col lg:col-span-4">
               <div className="border-b border-foreground/15 p-6 md:p-8">
                 <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
@@ -410,7 +410,7 @@ export function HomePage() {
               </blockquote>
 
               {/* Live count strip */}
-              <div className="flex items-center justify-between gap-3 p-5 md:px-8">
+              <div className="mt-auto flex items-center justify-between gap-3 p-5 md:px-8">
                 <div>
                   <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-muted-foreground">
                     Tirada certificada
