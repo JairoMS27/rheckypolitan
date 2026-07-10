@@ -11,7 +11,7 @@ import {
 } from "@/lib/dashboard-paths";
 
 export function UserMenu() {
-  const { user, isAdmin, isRedactor, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const [profile, setProfile] = useState<{
     display_name: string;
     avatar_url: string | null;
@@ -19,7 +19,6 @@ export function UserMenu() {
   } | null>(null);
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const isStaff = isAdmin || isRedactor;
 
   useEffect(() => {
     if (!user) {
@@ -119,6 +118,13 @@ export function UserMenu() {
             ✎ Publicar artículo
           </Link>
           <Link
+            href="/feed"
+            onClick={() => setOpen(false)}
+            className="block w-full px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            Mi feed
+          </Link>
+          <Link
             href={authorPostsListPath()}
             onClick={() => setOpen(false)}
             className="block w-full px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-muted hover:text-foreground"
@@ -141,13 +147,13 @@ export function UserMenu() {
           >
             Ajustes
           </Link>
-          {isStaff && (
+          {isAdmin && (
             <Link
               href={ADMIN_DASHBOARD_PATH}
               onClick={() => setOpen(false)}
               className="block w-full border-t border-foreground/10 px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-muted hover:text-foreground"
             >
-              {isAdmin ? "Panel admin · revistas" : "Panel staff"}
+              Panel admin · revistas
             </Link>
           )}
           <button

@@ -14,10 +14,9 @@ import {
 } from "@/lib/dashboard-paths";
 
 export function AuthorShell({ children }: { children: ReactNode }) {
-  const { user, isAdmin, isRedactor, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const isStaff = isAdmin || isRedactor;
 
   if (loading) {
     return (
@@ -89,12 +88,12 @@ export function AuthorShell({ children }: { children: ReactNode }) {
             >
               Perfil
             </Link>
-            {isStaff && (
+            {isAdmin && (
               <Link
                 href={ADMIN_DASHBOARD_PATH}
                 className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
               >
-                {isAdmin ? "Panel admin" : "Panel staff"}
+                Panel admin
               </Link>
             )}
             <Button

@@ -1,7 +1,13 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedSupabase } from "@/lib/api-auth";
+import { siteUrl } from "@/lib/email/config";
+import {
+  logEmailSend,
+  sendTemplateEmail,
+} from "@/lib/email/send-transactional";
+
 export const dynamic = "force-dynamic";
 
 const SECTION_VALUES = [
@@ -44,6 +50,84 @@ async function isAdmin(userClient: ReturnType<typeof createClient>, userId: stri
     .eq("role", "admin")
     .maybeSingle();
   return Boolean(data);
+}
+
+/**
+ * Notify followers who opted into email alerts when this author publishes.
+ * Best-effort: never fails the publish request.
+ */
+async function notifyFollowersOfPost(
+  admin: SupabaseClient,
+  post: {
+    id: string;
+    author_id: string | null;
+    title: string;
+    excerpt: string | null;
+    section: string;
+    slug: string;
+    published: boolean;
+  },
+  wasAlreadyPublished: boolean,
+) {
+  if (!post.published || wasAlreadyPublished || !post.author_id) return;
+
+  try {
+    const { data: follows } = await admin
+      .from("follows")
+      .select("follower_id")
+      .eq("following_id", post.author_id)
+      .eq("notify_posts", true);
+
+    const followerIds = (follows ?? []).map((f) => f.follower_id as string);
+    if (!followerIds.length) return;
+
+    const { data: authorProfile } = await admin
+      .from("profiles")
+      .select("display_name, username")
+      .eq("id", post.author_id)
+      .maybeSingle();
+
+    // Resolve emails via auth admin API
+    const recipients: { userId: string; email: string }[] = [];
+    for (const fid of followerIds) {
+      const { data } = await admin.auth.admin.getUserById(fid);
+      const email = data.user?.email;
+      if (email) recipients.push({ userId: fid, email });
+    }
+    if (!recipients.length) return;
+
+    const origin = siteUrl().replace(/\/$/, "");
+    const readUrl = `${origin}/noticia/${post.section}/${post.slug}`;
+    const authorName = authorProfile?.display_name ?? "Un autor";
+    const authorUsername = authorProfile?.username ?? undefined;
+
+    for (const r of recipients) {
+      const messageId = `followed-post-${post.id}-${r.userId}`;
+      const result = await sendTemplateEmail({
+        templateKey: "followed-author-post",
+        to: r.email,
+        templateProps: {
+          authorName,
+          authorUsername,
+          title: post.title,
+          excerpt: post.excerpt,
+          readUrl,
+          siteUrl: origin,
+        },
+        messageId,
+        idempotencyKey: messageId,
+      });
+      await logEmailSend(admin, {
+        messageId,
+        templateName: "followed-author-post",
+        recipientEmail: r.email,
+        status: result.ok ? "sent" : "failed",
+        errorMessage: result.ok ? undefined : result.error,
+      });
+    }
+  } catch (err) {
+    console.error("[publicar] notify followers failed", err);
+  }
 }
 
 /**
@@ -139,7 +223,7 @@ export async function POST(request: NextRequest) {
   if (body.id) {
     const { data: existing, error: findErr } = await admin
       .from("posts")
-      .select("id, author_id")
+      .select("id, author_id, published")
       .eq("id", body.id)
       .maybeSingle();
     if (findErr || !existing) {
@@ -148,6 +232,7 @@ export async function POST(request: NextRequest) {
     if (!staffAdmin && existing.author_id !== auth.userId) {
       return NextResponse.json({ error: "No puedes editar este artículo" }, { status: 403 });
     }
+    const wasPublished = Boolean(existing.published);
     const { data, error } = await admin
       .from("posts")
       .update(row)
@@ -155,6 +240,22 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Fire-and-forget follower emails on first publish
+    void notifyFollowersOfPost(
+      admin as SupabaseClient,
+      {
+        id: data.id,
+        author_id: data.author_id,
+        title: data.title,
+        excerpt: data.excerpt,
+        section: data.section,
+        slug: data.slug,
+        published: data.published,
+      },
+      wasPublished,
+    );
+
     return NextResponse.json({ post: data });
   }
 
@@ -164,6 +265,21 @@ export async function POST(request: NextRequest) {
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  void notifyFollowersOfPost(
+    admin as SupabaseClient,
+    {
+      id: data.id,
+      author_id: data.author_id,
+      title: data.title,
+      excerpt: data.excerpt,
+      section: data.section,
+      slug: data.slug,
+      published: data.published,
+    },
+    false,
+  );
+
   return NextResponse.json({ post: data }, { status: 201 });
 }
 

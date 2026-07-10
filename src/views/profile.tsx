@@ -22,8 +22,7 @@ import { toast } from "sonner";
 type Tab = "profile" | "account";
 
 export function ProfilePage() {
-  const { user, isAdmin, isRedactor, loading: authLoading } = useAuth();
-  const isStaff = isAdmin || isRedactor;
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("profile");
 
@@ -266,12 +265,18 @@ export function ProfilePage() {
           >
             Mis artículos
           </Link>
-          {isStaff && (
+          <Link
+            href="/feed"
+            className="border border-foreground/20 px-4 py-4 text-center font-mono text-[10px] uppercase tracking-widest transition hover:border-foreground hover:bg-muted"
+          >
+            Mi feed
+          </Link>
+          {isAdmin && (
             <Link
               href={ADMIN_DASHBOARD_PATH}
-              className="border border-foreground/20 px-4 py-4 text-center font-mono text-[10px] uppercase tracking-widest transition hover:border-foreground hover:bg-muted sm:col-span-2"
+              className="border border-foreground/20 px-4 py-4 text-center font-mono text-[10px] uppercase tracking-widest transition hover:border-foreground hover:bg-muted"
             >
-              {isAdmin ? "Panel admin · revistas y staff" : "Panel staff"}
+              Panel admin · revistas
             </Link>
           )}
         </div>

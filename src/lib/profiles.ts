@@ -102,16 +102,139 @@ export async function unfollowUser(followerId: string, followingId: string) {
     .eq("following_id", followingId);
 }
 
+/** Remove someone who follows you (owner of the profile). */
+export async function removeFollower(ownerId: string, followerId: string) {
+  return supabase
+    .from("follows")
+    .delete()
+    .eq("following_id", ownerId)
+    .eq("follower_id", followerId);
+}
+
+export async function setFollowNotify(
+  followerId: string,
+  followingId: string,
+  notifyPosts: boolean,
+) {
+  return supabase
+    .from("follows")
+    .update({ notify_posts: notifyPosts })
+    .eq("follower_id", followerId)
+    .eq("following_id", followingId);
+}
+
+export async function getFollowNotify(
+  followerId: string,
+  followingId: string,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("follows")
+    .select("notify_posts")
+    .eq("follower_id", followerId)
+    .eq("following_id", followingId)
+    .maybeSingle();
+  return Boolean((data as { notify_posts?: boolean } | null)?.notify_posts);
+}
+
+export type FollowListPerson = ProfileSnippet & {
+  notify_posts?: boolean;
+};
+
+/** People who follow `userId`. */
+export async function listFollowers(userId: string): Promise<FollowListPerson[]> {
+  const { data: rows } = await supabase
+    .from("follows")
+    .select("follower_id")
+    .eq("following_id", userId)
+    .order("created_at", { ascending: false });
+  const ids = (rows ?? []).map((r) => r.follower_id as string);
+  const map = await fetchProfileSnippets(ids);
+  return ids.map((id) => map.get(id)).filter(Boolean) as FollowListPerson[];
+}
+
+/** People `userId` follows. Includes notify_posts when available. */
+export async function listFollowing(userId: string): Promise<FollowListPerson[]> {
+  const { data: rows } = await supabase
+    .from("follows")
+    .select("following_id, notify_posts")
+    .eq("follower_id", userId)
+    .order("created_at", { ascending: false });
+  const ids = (rows ?? []).map((r) => r.following_id as string);
+  const notifyById = new Map(
+    (rows ?? []).map((r) => [
+      r.following_id as string,
+      Boolean((r as { notify_posts?: boolean }).notify_posts),
+    ]),
+  );
+  const map = await fetchProfileSnippets(ids);
+  return ids
+    .map((id) => {
+      const p = map.get(id);
+      if (!p) return null;
+      return { ...p, notify_posts: notifyById.get(id) ?? false };
+    })
+    .filter(Boolean) as FollowListPerson[];
+}
+
 export async function fetchPublishedPostsByAuthor(authorId: string) {
   return supabase
     .from("posts")
     .select(
-      "id, section, slug, title, excerpt, cover_path, cover_position, published_at, author",
+      "id, section, slug, title, excerpt, cover_path, cover_position, published_at, author, author_id",
     )
     .eq("author_id", authorId)
     .eq("published", true)
     .order("published_at", { ascending: false });
 }
+
+/** Published posts from authors the viewer follows. */
+export async function fetchFeedPosts(viewerId: string) {
+  const { data: follows } = await supabase
+    .from("follows")
+    .select("following_id, notify_posts")
+    .eq("follower_id", viewerId);
+
+  const authorIds = (follows ?? []).map((f) => f.following_id as string);
+  if (authorIds.length === 0) {
+    return { posts: [] as FeedPost[], followingIds: [] as string[], notifyByAuthor: new Map<string, boolean>() };
+  }
+
+  const notifyByAuthor = new Map(
+    (follows ?? []).map((f) => [
+      f.following_id as string,
+      Boolean((f as { notify_posts?: boolean }).notify_posts),
+    ]),
+  );
+
+  const { data: posts } = await supabase
+    .from("posts")
+    .select(
+      "id, section, slug, title, excerpt, cover_path, cover_position, published_at, author, author_id",
+    )
+    .in("author_id", authorIds)
+    .eq("published", true)
+    .order("published_at", { ascending: false })
+    .limit(50);
+
+  return {
+    posts: (posts ?? []) as FeedPost[],
+    followingIds: authorIds,
+    notifyByAuthor,
+  };
+}
+
+export type FeedPost = {
+  id: string;
+  section: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  cover_path: string | null;
+  cover_position: string | null;
+  published_at: string;
+  author: string | null;
+  author_id: string | null;
+};
 
 /** Check username availability (case-insensitive; stored lowercase). */
 export async function isUsernameAvailable(

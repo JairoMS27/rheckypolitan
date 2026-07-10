@@ -17,11 +17,18 @@ import {
   fetchProfileByUsername,
   fetchPublishedPostsByAuthor,
   followUser,
+  getFollowNotify,
   isFollowing,
+  listFollowers,
+  listFollowing,
+  removeFollower,
+  setFollowNotify,
   unfollowUser,
+  type FollowListPerson,
   type PublicProfile,
 } from "@/lib/profiles";
 import { fetchRedactorIdSet } from "@/lib/redactor-badges";
+import { profilePath } from "@/lib/username";
 
 type AuthorPost = {
   id: string;
@@ -45,18 +52,42 @@ export function PublicProfilePage({ username }: { username: string }) {
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
   const [iFollow, setIFollow] = useState(false);
+  const [notifyPosts, setNotifyPosts] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [posts, setPosts] = useState<AuthorPost[] | null>(null);
+  const [listOpen, setListOpen] = useState<"followers" | "following" | null>(null);
+  const [listPeople, setListPeople] = useState<FollowListPerson[] | null>(null);
+  const [listBusy, setListBusy] = useState(false);
 
   const reloadSocial = async (profileId: string, viewerId?: string | null) => {
-    const [fCount, gCount, followed] = await Promise.all([
+    const [fCount, gCount, followed, notify] = await Promise.all([
       countFollowers(profileId),
       countFollowing(profileId),
       viewerId ? isFollowing(viewerId, profileId) : Promise.resolve(false),
+      viewerId && viewerId !== profileId
+        ? getFollowNotify(viewerId, profileId)
+        : Promise.resolve(false),
     ]);
     setFollowers(fCount);
     setFollowing(gCount);
     setIFollow(followed);
+    setNotifyPosts(notify);
+  };
+
+  const openList = async (kind: "followers" | "following") => {
+    if (!profile) return;
+    setListOpen(kind);
+    setListPeople(null);
+    setListBusy(true);
+    try {
+      const people =
+        kind === "followers"
+          ? await listFollowers(profile.id)
+          : await listFollowing(profile.id);
+      setListPeople(people);
+    } finally {
+      setListBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -95,6 +126,7 @@ export function PublicProfilePage({ username }: { username: string }) {
         const { error } = await unfollowUser(user.id, profile.id);
         if (error) throw error;
         setIFollow(false);
+        setNotifyPosts(false);
         setFollowers((n) => Math.max(0, n - 1));
       } else {
         const { error } = await followUser(user.id, profile.id);
@@ -213,14 +245,22 @@ export function PublicProfilePage({ username }: { username: string }) {
               </p>
             )}
             <div className="mt-5 flex flex-wrap items-center gap-5 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-              <span>
+              <button
+                type="button"
+                onClick={() => void openList("followers")}
+                className="hover:text-[#B22234]"
+              >
                 <strong className="text-foreground">{followers}</strong>{" "}
                 seguidores
-              </span>
-              <span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void openList("following")}
+                className="hover:text-[#B22234]"
+              >
                 <strong className="text-foreground">{following}</strong>{" "}
                 seguidos
-              </span>
+              </button>
               <span>Miembro desde {memberSince}</span>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -232,26 +272,196 @@ export function PublicProfilePage({ username }: { username: string }) {
                   Editar perfil
                 </Link>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleFollow}
-                  disabled={followBusy}
-                  className={`border px-5 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest transition disabled:opacity-50 ${
-                    iFollow
-                      ? "border-foreground/30 text-foreground hover:border-[#B22234] hover:text-[#B22234]"
-                      : "border-foreground bg-foreground text-background hover:border-[#B22234] hover:bg-[#B22234]"
-                  }`}
-                >
-                  {followBusy
-                    ? "…"
-                    : iFollow
-                      ? "Dejar de seguir"
-                      : "Seguir"}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleFollow}
+                    disabled={followBusy}
+                    className={`border px-5 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest transition disabled:opacity-50 ${
+                      iFollow
+                        ? "border-foreground/30 text-foreground hover:border-[#B22234] hover:text-[#B22234]"
+                        : "border-foreground bg-foreground text-background hover:border-[#B22234] hover:bg-[#B22234]"
+                    }`}
+                  >
+                    {followBusy
+                      ? "…"
+                      : iFollow
+                        ? "Dejar de seguir"
+                        : "Seguir"}
+                  </button>
+                  {iFollow && (
+                    <button
+                      type="button"
+                      disabled={followBusy}
+                      onClick={async () => {
+                        if (!user || !profile) return;
+                        setFollowBusy(true);
+                        try {
+                          const next = !notifyPosts;
+                          const { error } = await setFollowNotify(
+                            user.id,
+                            profile.id,
+                            next,
+                          );
+                          if (error) throw error;
+                          setNotifyPosts(next);
+                          toast.success(
+                            next
+                              ? "Te avisaremos por correo cuando publique"
+                              : "Avisos por correo desactivados",
+                          );
+                        } catch (err: unknown) {
+                          toast.error(
+                            err instanceof Error ? err.message : "No se pudo guardar",
+                          );
+                        } finally {
+                          setFollowBusy(false);
+                        }
+                      }}
+                      className={`border px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest transition ${
+                        notifyPosts
+                          ? "border-[#B22234] text-[#B22234]"
+                          : "border-foreground/20 text-muted-foreground hover:border-foreground"
+                      }`}
+                    >
+                      {notifyPosts ? "✉ Avisos ON" : "✉ Avisos OFF"}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
         </div>
+
+        {/* Followers / following drawer */}
+        {listOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+            role="dialog"
+            aria-modal
+            onClick={() => setListOpen(null)}
+          >
+            <div
+              className="max-h-[70vh] w-full max-w-md overflow-hidden border border-foreground/15 bg-background shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-foreground/10 px-4 py-3">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  {listOpen === "followers" ? "Seguidores" : "Seguidos"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setListOpen(null)}
+                  className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                >
+                  Cerrar
+                </button>
+              </div>
+              <div className="max-h-[calc(70vh-52px)] overflow-y-auto">
+                {listBusy || listPeople === null ? (
+                  <p className="px-4 py-8 text-center font-mono text-xs text-muted-foreground">
+                    Cargando…
+                  </p>
+                ) : listPeople.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    Nadie aquí todavía.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-foreground/10">
+                    {listPeople.map((person) => {
+                      const href = profilePath(person.username);
+                      const canRemoveFollower =
+                        isOwn && listOpen === "followers" && person.id !== user?.id;
+                      const canUnfollow =
+                        isOwn && listOpen === "following";
+                      return (
+                        <li
+                          key={person.id}
+                          className="flex items-center gap-3 px-4 py-3"
+                        >
+                          <UserAvatar
+                            displayName={person.display_name}
+                            username={person.username}
+                            avatarUrl={person.avatar_url}
+                            size="sm"
+                          />
+                          <div className="min-w-0 flex-1">
+                            {href ? (
+                              <Link
+                                href={href}
+                                onClick={() => setListOpen(null)}
+                                className="font-display text-base hover:text-[#B22234]"
+                              >
+                                {person.display_name}
+                              </Link>
+                            ) : (
+                              <span className="font-display text-base">
+                                {person.display_name}
+                              </span>
+                            )}
+                            {person.username && (
+                              <p className="font-mono text-[10px] text-muted-foreground">
+                                @{person.username}
+                              </p>
+                            )}
+                          </div>
+                          {canRemoveFollower && (
+                            <button
+                              type="button"
+                              className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground hover:text-[#B22234]"
+                              onClick={async () => {
+                                if (!profile) return;
+                                const { error } = await removeFollower(
+                                  profile.id,
+                                  person.id,
+                                );
+                                if (error) {
+                                  toast.error(error.message);
+                                  return;
+                                }
+                                setListPeople((prev) =>
+                                  (prev ?? []).filter((p) => p.id !== person.id),
+                                );
+                                setFollowers((n) => Math.max(0, n - 1));
+                                toast.success("Seguidor eliminado");
+                              }}
+                            >
+                              Quitar
+                            </button>
+                          )}
+                          {canUnfollow && (
+                            <button
+                              type="button"
+                              className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground hover:text-[#B22234]"
+                              onClick={async () => {
+                                if (!user) return;
+                                const { error } = await unfollowUser(
+                                  user.id,
+                                  person.id,
+                                );
+                                if (error) {
+                                  toast.error(error.message);
+                                  return;
+                                }
+                                setListPeople((prev) =>
+                                  (prev ?? []).filter((p) => p.id !== person.id),
+                                );
+                                setFollowing((n) => Math.max(0, n - 1));
+                                toast.success("Dejaste de seguir");
+                              }}
+                            >
+                              Dejar
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <section className="mt-14 border-t border-foreground/15 pt-10">
           <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
