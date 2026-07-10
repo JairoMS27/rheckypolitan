@@ -1,6 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireAdminFromRequest } from "@/lib/maintenance-admin";
+import { applyMaintenanceCookie } from "@/lib/maintenance-cookie";
 import { getMaintenanceMode, setMaintenanceMode } from "@/lib/maintenance-server";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const admin = await requireAdminFromRequest(request);
@@ -9,7 +12,10 @@ export async function GET(request: NextRequest) {
   }
 
   const enabled = await getMaintenanceMode();
-  return NextResponse.json({ maintenance_mode: enabled });
+  const response = NextResponse.json({ maintenance_mode: enabled });
+  response.headers.set("Cache-Control", "no-store, max-age=0");
+  applyMaintenanceCookie(response, enabled);
+  return response;
 }
 
 export async function POST(request: NextRequest) {
@@ -31,16 +37,7 @@ export async function POST(request: NextRequest) {
 
   const maintenance_mode = await setMaintenanceMode(body.enabled);
   const response = NextResponse.json({ maintenance_mode });
-
-  if (maintenance_mode) {
-    response.cookies.set("maintenance_mode", "1", {
-      path: "/",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 30,
-    });
-  } else {
-    response.cookies.set("maintenance_mode", "", { path: "/", maxAge: 0 });
-  }
-
+  response.headers.set("Cache-Control", "no-store, max-age=0");
+  applyMaintenanceCookie(response, maintenance_mode);
   return response;
 }

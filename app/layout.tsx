@@ -3,6 +3,9 @@ import { MaintenanceGate } from "./maintenance-gate";
 import { Providers } from "./providers";
 import "./globals.css";
 
+/** Always re-read maintenance flag from DB; never serve a cached ON screen after toggle OFF. */
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: {
     default: "Rheckypolitan — Revista digital",

@@ -13,19 +13,28 @@ export function MaintenanceGateShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  // Trust the server render first so a stale cookie/fetch can't flash the wall on reload.
   const [maintenanceMode, setMaintenanceMode] = useState(initialMaintenanceMode);
+
+  useEffect(() => {
+    setMaintenanceMode(initialMaintenanceMode);
+  }, [initialMaintenanceMode]);
 
   useEffect(() => {
     let cancelled = false;
 
-    void fetch("/api/maintenance/status", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data: { maintenance_mode?: boolean }) => {
-        if (!cancelled) {
-          setMaintenanceMode(Boolean(data.maintenance_mode));
-        }
+    void fetch("/api/maintenance/status", { cache: "no-store", credentials: "same-origin" })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return (await res.json()) as { maintenance_mode?: boolean };
       })
-      .catch(() => {});
+      .then((data) => {
+        if (cancelled || data == null) return;
+        setMaintenanceMode(Boolean(data.maintenance_mode));
+      })
+      .catch(() => {
+        // Keep SSR value on network errors — never invent "on".
+      });
 
     return () => {
       cancelled = true;
