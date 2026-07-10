@@ -1,6 +1,5 @@
 /**
  * Pure fly-magazine poses for shelf pull-out / open / return animation.
- * Used by MagazineShelf FlyMagazine so CSS transitions have defined from→to states.
  */
 
 export type FlyPose = "rest" | "lifted" | "open";
@@ -11,22 +10,16 @@ export type FlyPhase = "exiting" | "opening" | "closing" | "idle" | "reading";
 export function flyPoseTransform(pose: FlyPose): string {
   switch (pose) {
     case "rest":
-      return "translateY(0) scale(1) rotate(0deg)";
+      return "translate3d(0, 0, 0) scale(1) rotate(0deg)";
     case "lifted":
-      return "translateY(-130%) scale(1.45) rotate(-10deg)";
+      return "translate3d(0, -40%, 40px) scale(1.55) rotate(-12deg)";
     case "open":
-      return "translateY(-45vh) scale(3.2) rotate(0deg)";
+      return "translate3d(calc(50vw - 50%), calc(-42vh), 80px) scale(3.4) rotateY(-8deg)";
     default:
-      return "translateY(0) scale(1) rotate(0deg)";
+      return "translate3d(0, 0, 0) scale(1) rotate(0deg)";
   }
 }
 
-/**
- * Target pose for a shelf phase (after transition completes).
- * exiting → lifted (pull off shelf)
- * opening → open (grow / center)
- * closing → rest (return to shelf)
- */
 export function targetPoseForPhase(phase: FlyPhase): FlyPose {
   if (phase === "exiting") return "lifted";
   if (phase === "opening") return "open";
@@ -34,12 +27,6 @@ export function targetPoseForPhase(phase: FlyPhase): FlyPose {
   return "rest";
 }
 
-/**
- * Starting pose when entering a phase (before double-rAF applies the target).
- * exiting starts at rest so the pull animates.
- * closing starts at open so the return animates.
- * opening continues from lifted.
- */
 export function entryPoseForPhase(phase: FlyPhase): FlyPose {
   if (phase === "exiting") return "rest";
   if (phase === "closing") return "open";
@@ -48,7 +35,7 @@ export function entryPoseForPhase(phase: FlyPhase): FlyPose {
 }
 
 export function flyOpacity(pose: FlyPose, phase: FlyPhase): number {
-  // Fade out as it "opens" into the full-screen reader
   if (phase === "opening" && pose === "open") return 0;
+  if (phase === "closing" && pose === "rest") return 1;
   return 1;
 }

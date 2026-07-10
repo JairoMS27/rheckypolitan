@@ -38,6 +38,7 @@ type Props = {
 };
 
 type LoadedPages = {
+  id: string;
   number: number;
   title: string;
   pages: FlipPage[];
@@ -55,17 +56,20 @@ export function MagazineShelf({ issues }: Props) {
   );
   const [loaded, setLoaded] = useState<LoadedPages | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadingPages, setLoadingPages] = useState(false);
   const timers = useRef<number[]>([]);
+  const loadGen = useRef(0);
 
   const layout = useMemo(() => layoutShelfIssues(issues, 6), [issues]);
 
-  const clearTimers = () => {
+  const clearTimers = useCallback(() => {
     timers.current.forEach((id) => window.clearTimeout(id));
     timers.current = [];
-  };
+  }, []);
 
-  useEffect(() => () => clearTimers(), []);
+  useEffect(() => () => clearTimers(), [clearTimers]);
 
+  // Timed phase transitions
   useEffect(() => {
     clearTimers();
     if (state.phase === "exiting") {
@@ -91,61 +95,85 @@ export function MagazineShelf({ issues }: Props) {
       );
     }
     return clearTimers;
-  }, [state.phase]);
+  }, [state.phase, clearTimers]);
 
+  /**
+   * Load pages when an issue becomes active.
+   * IMPORTANT: depends only on activeId — NOT on phase — so transitioning
+   * exiting→opening→reading does NOT cancel the in-flight fetch (that was the reopen bug).
+   */
   useEffect(() => {
-    if (state.phase !== "exiting" && state.phase !== "opening") return;
-    if (!state.activeNumber || !state.activeId) return;
+    if (!state.activeId || !state.activeNumber) return;
+
+    const gen = ++loadGen.current;
     let cancelled = false;
+    setLoadingPages(true);
     setLoadError(null);
+    // Drop stale pages immediately so we never show the previous issue's reader
+    setLoaded(null);
+
+    const issueMeta = issues.find((i) => i.id === state.activeId);
+    const activeNumber = state.activeNumber;
+    const activeId = state.activeId;
 
     (async () => {
-      const issueMeta = issues.find((i) => i.id === state.activeId);
       const { data: iss } = await supabase
         .from("issues")
         .select("id,number,title")
-        .eq("number", state.activeNumber!)
+        .eq("number", activeNumber)
         .maybeSingle();
-      if (cancelled) return;
+
+      if (cancelled || gen !== loadGen.current) return;
+
       if (!iss) {
         setLoaded({
-          number: state.activeNumber!,
-          title: issueMeta?.title ?? `N.º ${state.activeNumber}`,
+          id: activeId,
+          number: activeNumber,
+          title: issueMeta?.title ?? `N.º ${activeNumber}`,
           pages: [],
         });
+        setLoadingPages(false);
         return;
       }
+
       const { data: pg } = await supabase
         .from("pages")
         .select("index,image_path")
         .eq("issue_id", iss.id)
         .order("index");
-      if (cancelled) return;
+
+      if (cancelled || gen !== loadGen.current) return;
+
       setLoaded({
+        id: activeId,
         number: iss.number,
         title: iss.title,
         pages: (pg as FlipPage[] | null) ?? [],
       });
+      setLoadingPages(false);
     })().catch((err) => {
-      if (!cancelled) {
-        setLoadError(err instanceof Error ? err.message : "Error al cargar");
-        setLoaded({
-          number: state.activeNumber!,
-          title: issues.find((i) => i.id === state.activeId)?.title ?? "",
-          pages: [],
-        });
-      }
+      if (cancelled || gen !== loadGen.current) return;
+      setLoadError(err instanceof Error ? err.message : "Error al cargar");
+      setLoaded({
+        id: activeId,
+        number: activeNumber,
+        title: issueMeta?.title ?? "",
+        pages: [],
+      });
+      setLoadingPages(false);
     });
 
     return () => {
       cancelled = true;
     };
-  }, [state.phase, state.activeNumber, state.activeId, issues]);
+  }, [state.activeId, state.activeNumber, issues]);
 
+  // Clear when fully closed
   useEffect(() => {
     if (state.phase === "idle") {
       setLoaded(null);
       setLoadError(null);
+      setLoadingPages(false);
     }
   }, [state.phase]);
 
@@ -160,23 +188,27 @@ export function MagazineShelf({ issues }: Props) {
   const activeSlot = layout.slots.find((s) => s.issue.id === state.activeId);
   const flyFrom = activeSlot
     ? slotPixelPosition(layout, activeSlot)
-    : { x: 500, y: 200, spineW: 48, spineH: 140 };
+    : { x: 500, y: 200, spineW: 52, spineH: 148 };
 
   const isBusy = state.phase !== "idle";
   const showFly =
     state.phase === "exiting" ||
     state.phase === "opening" ||
     state.phase === "closing";
-  const showReader = state.phase === "reading" && loaded !== null;
 
-  // Board Y positions derived from first slot of each row
+  // Only show reader when phase is reading AND pages match the active issue
+  const pagesReady =
+    loaded !== null &&
+    state.activeId !== null &&
+    loaded.id === state.activeId;
+  const showReader = state.phase === "reading" && pagesReady;
+
   const boardYs = useMemo(() => {
     const ys: number[] = [];
     for (let r = 0; r < layout.rows; r++) {
       const slot = layout.slots.find((s) => s.row === r);
       if (!slot) continue;
       const pos = slotPixelPosition(layout, slot);
-      // Board sits just under the magazine bottom
       ys.push(pos.y + pos.spineH);
     }
     if (ys.length === 0) ys.push(layout.viewBox.h * 0.55);
@@ -188,100 +220,144 @@ export function MagazineShelf({ issues }: Props) {
       className="relative w-full"
       data-shelf-root
       data-shelf-phase={state.phase}
+      data-shelf-active={state.activeId ?? ""}
     >
+      {/* Stage with perspective for fly layer */}
       <div
         className="relative mx-auto w-full max-w-[1100px] select-none"
-        style={{ aspectRatio: `${layout.viewBox.w} / ${layout.viewBox.h}` }}
+        style={{
+          aspectRatio: `${layout.viewBox.w} / ${layout.viewBox.h}`,
+          perspective: "1200px",
+        }}
       >
         <svg
           viewBox={`0 0 ${layout.viewBox.w} ${layout.viewBox.h}`}
-          className="h-full w-full"
+          className="h-full w-full drop-shadow-xl"
           role="img"
           aria-label="Estante de revistas Rheckypolitan"
         >
           <defs>
             <linearGradient id="shelfWood" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#7a4a30" />
-              <stop offset="50%" stopColor="#9a6342" />
+              <stop offset="0%" stopColor="#8b5a3c" />
+              <stop offset="40%" stopColor="#a67048" />
               <stop offset="100%" stopColor="#5c3420" />
             </linearGradient>
             <linearGradient id="shelfPost" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor="#3d2214" />
-              <stop offset="50%" stopColor="#5a3220" />
+              <stop offset="50%" stopColor="#6b422c" />
               <stop offset="100%" stopColor="#3d2214" />
             </linearGradient>
             <linearGradient id="shelfBack" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#1c1410" />
-              <stop offset="100%" stopColor="#0c0907" />
+              <stop offset="0%" stopColor="#241810" />
+              <stop offset="100%" stopColor="#0e0a08" />
             </linearGradient>
-            <filter id="shelfShadow" x="-15%" y="-15%" width="130%" height="140%">
+            <linearGradient id="shelfGloss" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#fff" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+            </linearGradient>
+            <filter id="shelfShadow" x="-20%" y="-20%" width="140%" height="150%">
               <feDropShadow
                 dx="0"
-                dy="3"
-                stdDeviation="3"
+                dy="4"
+                stdDeviation="4"
                 floodColor="#000"
-                floodOpacity="0.4"
+                floodOpacity="0.45"
+              />
+            </filter>
+            <filter id="magShadow" x="-30%" y="-20%" width="160%" height="150%">
+              <feDropShadow
+                dx="2"
+                dy="6"
+                stdDeviation="5"
+                floodColor="#000"
+                floodOpacity="0.5"
               />
             </filter>
           </defs>
 
-          {/* Cabinet */}
+          {/* Cabinet body */}
           <rect
-            x="16"
-            y="8"
-            width={layout.viewBox.w - 32}
-            height={layout.viewBox.h - 16}
+            x="14"
+            y="6"
+            width={layout.viewBox.w - 28}
+            height={layout.viewBox.h - 12}
             fill="url(#shelfBack)"
-            rx="3"
+            rx="4"
           />
+          {/* Inner back panel highlight */}
           <rect
-            x="16"
-            y="8"
-            width="20"
-            height={layout.viewBox.h - 16}
+            x="42"
+            y="28"
+            width={layout.viewBox.w - 84}
+            height={layout.viewBox.h - 50}
+            fill="#1a120e"
+            opacity="0.6"
+            rx="2"
+          />
+          {/* Posts */}
+          <rect
+            x="14"
+            y="6"
+            width="24"
+            height={layout.viewBox.h - 12}
             fill="url(#shelfPost)"
           />
           <rect
-            x={layout.viewBox.w - 36}
-            y="8"
-            width="20"
-            height={layout.viewBox.h - 16}
+            x={layout.viewBox.w - 38}
+            y="6"
+            width="24"
+            height={layout.viewBox.h - 12}
             fill="url(#shelfPost)"
           />
-          {/* Top cornice */}
+          {/* Cornice */}
           <rect
-            x="12"
-            y="4"
-            width={layout.viewBox.w - 24}
-            height="14"
+            x="8"
+            y="2"
+            width={layout.viewBox.w - 16}
+            height="16"
             fill="url(#shelfWood)"
+            filter="url(#shelfShadow)"
+          />
+          <rect
+            x="8"
+            y="2"
+            width={layout.viewBox.w - 16}
+            height="8"
+            fill="url(#shelfGloss)"
           />
 
           {boardYs.map((y, row) => (
             <g key={`board-${row}`}>
               <rect
-                x="40"
+                x="42"
                 y={y}
-                width={layout.viewBox.w - 80}
-                height="20"
+                width={layout.viewBox.w - 84}
+                height="22"
                 fill="url(#shelfWood)"
                 filter="url(#shelfShadow)"
               />
               <rect
-                x="40"
-                y={y + 16}
-                width={layout.viewBox.w - 80}
-                height="10"
-                fill="#2e1a10"
-                opacity="0.9"
+                x="42"
+                y={y}
+                width={layout.viewBox.w - 84}
+                height="8"
+                fill="url(#shelfGloss)"
+              />
+              <rect
+                x="42"
+                y={y + 18}
+                width={layout.viewBox.w - 84}
+                height="12"
+                fill="#2a180f"
+                opacity="0.95"
               />
               <line
-                x1="48"
-                y1={y + 5}
-                x2={layout.viewBox.w - 48}
-                y2={y + 5}
-                stroke="#c49a78"
-                strokeOpacity="0.25"
+                x1="52"
+                y1={y + 6}
+                x2={layout.viewBox.w - 52}
+                y2={y + 6}
+                stroke="#d4a574"
+                strokeOpacity="0.2"
                 strokeWidth="1"
               />
             </g>
@@ -308,6 +384,7 @@ export function MagazineShelf({ issues }: Props) {
                 transform={`translate(${spineX}, ${spineY})`}
                 opacity={hidden ? 0 : 1}
                 data-shelf-issue={slot.issue.number}
+                className="transition-opacity duration-150"
               >
                 <title>
                   {`N.º ${String(slot.issue.number).padStart(2, "0")} · ${slot.issue.title}`}
@@ -316,7 +393,19 @@ export function MagazineShelf({ issues }: Props) {
                   role="button"
                   tabIndex={isBusy ? -1 : 0}
                   aria-label={`Abrir N.º ${slot.issue.number}: ${slot.issue.title}`}
-                  className="cursor-pointer outline-none focus:outline-none"
+                  className="cursor-pointer outline-none"
+                  style={{
+                    transformOrigin: `${pos.spineW / 2}px ${pos.spineH}px`,
+                    transition: "transform 220ms cubic-bezier(0.22,1,0.36,1)",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (isBusy) return;
+                    (e.currentTarget as SVGGElement).style.transform =
+                      "translateY(-10px) scale(1.04)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as SVGGElement).style.transform = "";
+                  }}
                   onClick={() => {
                     if (!isBusy) selectIssue(slot.issue);
                   }}
@@ -328,13 +417,22 @@ export function MagazineShelf({ issues }: Props) {
                     }
                   }}
                 >
+                  {/* Shadow under magazine */}
+                  <ellipse
+                    cx={pos.spineW / 2}
+                    cy={pos.spineH + 4}
+                    rx={pos.spineW * 0.55}
+                    ry="6"
+                    fill="#000"
+                    opacity="0.35"
+                  />
                   <rect
                     width={pos.spineW}
                     height={pos.spineH}
-                    fill="#141414"
+                    fill="#121212"
                     stroke="#B22234"
                     strokeWidth="1.5"
-                    filter="url(#shelfShadow)"
+                    filter="url(#magShadow)"
                   />
                   {cover ? (
                     <image
@@ -354,17 +452,25 @@ export function MagazineShelf({ issues }: Props) {
                       fill="#2a2a2a"
                     />
                   )}
+                  {/* Gloss */}
+                  <rect
+                    x="2.5"
+                    y="2.5"
+                    width={pos.spineW * 0.35}
+                    height={pos.spineH - 5}
+                    fill="#fff"
+                    opacity="0.08"
+                  />
                   <rect
                     x="0"
-                    y={pos.spineH - 26}
+                    y={pos.spineH - 28}
                     width={pos.spineW}
-                    height="26"
+                    height="28"
                     fill="#B22234"
-                    opacity="0.95"
                   />
                   <text
                     x={pos.spineW / 2}
-                    y={pos.spineH - 9}
+                    y={pos.spineH - 10}
                     textAnchor="middle"
                     fill="#ffffff"
                     fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
@@ -392,10 +498,9 @@ export function MagazineShelf({ issues }: Props) {
           )}
         </svg>
 
-        {/* Keep mounted across exiting→opening→closing so CSS transitions can run */}
         {showFly && state.activeId && (
           <FlyMagazine
-            key={state.activeId}
+            key={`fly-${state.activeId}`}
             phase={state.phase}
             issue={issues.find((i) => i.id === state.activeId)!}
             from={flyFrom}
@@ -405,23 +510,38 @@ export function MagazineShelf({ issues }: Props) {
       </div>
 
       <p
-        className="mt-4 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+        className="mt-5 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
         data-shelf-hint
       >
-        {isBusy
-          ? state.phase === "closing"
-            ? "Volviendo al estante…"
-            : state.phase === "reading"
-              ? "Leyendo"
-              : "Sacando el número del estante…"
-          : "Clic en una revista para sacarla y leerla"}
+        {state.phase === "idle" && "Clic en una revista · se sale del estante y se abre"}
+        {state.phase === "exiting" && "Sacando del estante…"}
+        {state.phase === "opening" && "Abriendo el número…"}
+        {state.phase === "reading" &&
+          (loadingPages || !pagesReady
+            ? "Cargando páginas…"
+            : "Leyendo · Esc cierra")}
+        {state.phase === "closing" && "Devolviendo al estante…"}
       </p>
       {loadError && (
         <p className="mt-2 text-center text-sm text-[#B22234]">{loadError}</p>
       )}
 
+      {/* Loading veil while in reading but pages not ready yet */}
+      {state.phase === "reading" && !pagesReady && (
+        <div
+          className="fixed inset-0 z-[80] flex flex-col items-center justify-center bg-black/85"
+          data-shelf-loading
+        >
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[#B22234]" />
+          <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.28em] text-white/60">
+            Cargando el número…
+          </p>
+        </div>
+      )}
+
       {showReader && loaded && (
         <FlipReader
+          key={`reader-${loaded.id}`}
           title={loaded.title}
           number={loaded.number}
           pages={loaded.pages}
@@ -433,7 +553,7 @@ export function MagazineShelf({ issues }: Props) {
         state.phase === "opening" ||
         state.phase === "closing") && (
         <div
-          className="pointer-events-none fixed inset-0 z-[70] bg-black/45"
+          className="pointer-events-none fixed inset-0 z-[70] bg-black/50 backdrop-blur-[2px] transition-opacity duration-300"
           aria-hidden
           data-shelf-backdrop
         />
@@ -457,7 +577,6 @@ function FlyMagazine({
   const leftPct = (from.x / viewBox.w) * 100;
   const topPct = (from.y / viewBox.h) * 100;
 
-  // Pose state: always paint entry pose first, then double-rAF to target so CSS transitions run
   const [pose, setPose] = useState<FlyPose>(() => entryPoseForPhase(phase));
   const [transitionsOn, setTransitionsOn] = useState(false);
 
@@ -465,7 +584,6 @@ function FlyMagazine({
     const entry = entryPoseForPhase(phase);
     const target = targetPoseForPhase(phase);
 
-    // First paint: entry pose, no transition (avoids jump-to-end on mount)
     setTransitionsOn(false);
     setPose(entry);
 
@@ -498,8 +616,9 @@ function FlyMagazine({
     marginLeft: -from.spineW / 2,
     zIndex: 75,
     transformOrigin: "center bottom",
+    willChange: "transform, opacity",
     transition: transitionsOn
-      ? `transform ${duration}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${duration}ms ease`
+      ? `transform ${duration}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${Math.round(duration * 0.85)}ms ease`
       : "none",
     transform: flyPoseTransform(pose),
     opacity: flyOpacity(pose, phase),
@@ -514,7 +633,13 @@ function FlyMagazine({
       data-fly-pose={pose}
       data-fly-transitions={transitionsOn ? "on" : "off"}
     >
-      <div className="relative h-full w-full overflow-hidden border-2 border-[#B22234] bg-foreground shadow-2xl">
+      <div
+        className="relative h-full w-full overflow-hidden border-2 border-[#B22234] bg-foreground"
+        style={{
+          boxShadow:
+            "0 25px 50px -12px rgba(0,0,0,0.55), 0 0 0 1px rgba(178,34,52,0.3)",
+        }}
+      >
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -528,6 +653,13 @@ function FlyMagazine({
             {String(issue.number).padStart(2, "0")}
           </div>
         )}
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 w-1/3"
+          style={{
+            background:
+              "linear-gradient(90deg, rgba(255,255,255,0.18), transparent)",
+          }}
+        />
       </div>
     </div>
   );

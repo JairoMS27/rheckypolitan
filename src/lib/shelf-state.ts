@@ -28,7 +28,8 @@ export type ShelfEvent =
   | { type: "EXIT_DONE" }
   | { type: "OPEN_DONE" }
   | { type: "DISMISS" }
-  | { type: "CLOSE_DONE" };
+  | { type: "CLOSE_DONE" }
+  | { type: "RESET" };
 
 /**
  * Transition the shelf machine. Invalid events are no-ops (returns same state).
@@ -58,8 +59,8 @@ export function reduceShelfState(
       if (state.phase !== "reading" && state.phase !== "opening") return state;
       return { ...state, phase: "closing" };
     }
-    case "CLOSE_DONE": {
-      if (state.phase !== "closing") return state;
+    case "CLOSE_DONE":
+    case "RESET": {
       return initialShelfState;
     }
     default:
@@ -67,9 +68,9 @@ export function reduceShelfState(
   }
 }
 
-/** Durations used by the UI (ms) — pure constants for tests/docs. */
+/** Durations used by the UI (ms). */
 export const SHELF_ANIM = {
-  exitMs: 520,
-  openMs: 480,
-  closeMs: 420,
+  exitMs: 600,
+  openMs: 550,
+  closeMs: 480,
 } as const;

@@ -52,4 +52,22 @@ describe("reduceShelfState", () => {
       initialShelfState,
     );
   });
+
+  test("second SELECT works after full close cycle (reopen bug regression)", () => {
+    let s = initialShelfState;
+    s = reduceShelfState(s, { type: "SELECT", id: "a", number: 1 });
+    s = reduceShelfState(s, { type: "EXIT_DONE" });
+    s = reduceShelfState(s, { type: "OPEN_DONE" });
+    s = reduceShelfState(s, { type: "DISMISS" });
+    s = reduceShelfState(s, { type: "CLOSE_DONE" });
+    expect(s.phase).toBe("idle");
+    s = reduceShelfState(s, { type: "SELECT", id: "b", number: 7 });
+    expect(s.phase).toBe("exiting");
+    expect(s.activeId).toBe("b");
+    expect(s.activeNumber).toBe(7);
+    s = reduceShelfState(s, { type: "EXIT_DONE" });
+    s = reduceShelfState(s, { type: "OPEN_DONE" });
+    expect(s.phase).toBe("reading");
+    expect(s.activeNumber).toBe(7);
+  });
 });
