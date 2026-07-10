@@ -4,7 +4,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { SignupEmail } from "@/lib/email-templates/signup";
-import { AUTH_FROM_EMAIL, SITE_NAME, siteUrl } from "@/lib/email/config";
+import {
+  AUTH_FROM_EMAIL,
+  SITE_NAME,
+  buildAppAuthCallbackUrl,
+  siteUrl,
+} from "@/lib/email/config";
 import { sendEmail } from "@/lib/email/resend";
 import { passwordMeetsAllRules } from "@/lib/password";
 import { normalizeUsername, validateUsername } from "@/lib/username";
@@ -24,13 +29,9 @@ const BodySchema = z.object({
   redirectTo: z.string().max(500).optional(),
 });
 
-function safeAppRedirect(raw: string | undefined): string {
-  const base = siteUrl().replace(/\/$/, "");
-  if (!raw) return `${base}/auth/callback?redirect=${encodeURIComponent("/")}`;
-  if (!raw.startsWith("/") || raw.startsWith("//")) {
-    return `${base}/auth/callback?redirect=${encodeURIComponent("/")}`;
-  }
-  return `${base}/auth/callback?redirect=${encodeURIComponent(raw)}`;
+function safeNextPath(raw: string | undefined): string {
+  if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
+  return "/";
 }
 
 export async function POST(request: NextRequest) {
@@ -55,7 +56,9 @@ export async function POST(request: NextRequest) {
   const username = normalizeUsername(body.username);
   const displayName = body.displayName.trim();
   const email = body.email.trim().toLowerCase();
-  const redirectTo = safeAppRedirect(body.redirectTo);
+  const nextPath = safeNextPath(body.redirectTo);
+  // Allowed redirect for Supabase generateLink (must be in Auth redirect allow-list)
+  const supabaseRedirectTo = `${siteUrl().replace(/\/$/, "")}/auth/callback`;
 
   // 1) Username must be free
   const { data: taken, error: takenErr } = await supabaseAdmin
@@ -73,7 +76,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 2) Create user + confirmation link without going through Auth's public signup email
+  // 2) Create user + confirmation tokens without Auth's public signup email
   const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
     type: "signup",
     email,
@@ -83,7 +86,7 @@ export async function POST(request: NextRequest) {
         username,
         display_name: displayName,
       },
-      redirectTo,
+      redirectTo: supabaseRedirectTo,
     },
   });
 
@@ -115,24 +118,16 @@ export async function POST(request: NextRequest) {
   }
 
   const userId = linkData.user.id;
-  const actionLink =
-    linkData.properties?.action_link ||
-    // Fallback: build verify URL from hashed token if action_link missing
-    (() => {
-      const hash = linkData.properties?.hashed_token;
-      const supabaseUrl = (
-        process.env.SUPABASE_URL ??
-        process.env.NEXT_PUBLIC_SUPABASE_URL ??
-        ""
-      ).replace(/\/$/, "");
-      if (!hash || !supabaseUrl) return null;
-      const params = new URLSearchParams({
-        token: hash,
+  const hashedToken = linkData.properties?.hashed_token;
+
+  // Always host verification on our domain (never supabase /auth/v1/verify with localhost)
+  const confirmationUrl = hashedToken
+    ? buildAppAuthCallbackUrl({
+        tokenHash: hashedToken,
         type: "signup",
-        redirect_to: redirectTo,
-      });
-      return `${supabaseUrl}/auth/v1/verify?${params.toString()}`;
-    })();
+        next: nextPath,
+      })
+    : null;
 
   // 3) Ensure profile has the exact chosen username (trigger may have slugified)
   const { error: profileErr } = await supabaseAdmin.from("profiles").upsert(
@@ -154,67 +149,69 @@ export async function POST(request: NextRequest) {
       );
     }
     console.error("[register] profile upsert failed", profileErr);
-    // User exists; still try to send email — profile can be fixed later
   }
 
-  // 4) If project auto-confirms (email_confirm on), no email needed
+  // 4) If project auto-confirms, no email needed
   const emailConfirmed = Boolean(
     (linkData.user as { email_confirmed_at?: string | null }).email_confirmed_at,
   );
 
-  if (emailConfirmed || !actionLink) {
-    // With generateLink, users are usually unconfirmed; if no link, treat as created.
-    if (emailConfirmed) {
-      return NextResponse.json({
-        ok: true,
-        needsConfirmation: false,
-        message: "Cuenta creada. Ya puedes iniciar sesión.",
-      });
-    }
-    // No link and not confirmed — still return success so client can prompt login/check mail
-    console.warn("[register] missing action_link for user", userId);
+  if (emailConfirmed) {
+    return NextResponse.json({
+      ok: true,
+      needsConfirmation: false,
+      message: "Cuenta creada. Ya puedes iniciar sesión.",
+    });
   }
 
-  // 5) Send confirmation via our Resend path (bypasses Supabase email quota)
-  if (actionLink) {
-    try {
-      const element = React.createElement(SignupEmail, {
-        siteName: SITE_NAME,
-        siteUrl: siteUrl(),
-        recipient: email,
-        confirmationUrl: actionLink,
-      });
-      const html = await render(element);
-      const text = await render(element, { plainText: true });
-      await sendEmail({
-        to: email,
-        from: AUTH_FROM_EMAIL,
-        subject: "Confirma tu email — Rheckypolitan",
-        html,
-        text,
-        idempotencyKey: `register-${userId}`,
-      });
-    } catch (err) {
-      console.error("[register] resend failed", err);
-      // Leave user unconfirmed so they can retry; don't delete (password already set).
-      return NextResponse.json(
-        {
-          error:
-            "Cuenta creada pero no pudimos enviar el correo de confirmación. Espera un momento e inténtalo de nuevo o contacta con soporte.",
-          needsConfirmation: true,
-          emailSent: false,
-        },
-        { status: 502 },
-      );
-    }
+  if (!confirmationUrl) {
+    console.error("[register] missing hashed_token for user", userId);
+    return NextResponse.json(
+      {
+        error:
+          "Cuenta creada pero no pudimos generar el enlace de confirmación. Contacta con soporte.",
+      },
+      { status: 500 },
+    );
+  }
+
+  // 5) Brand confirmation email via Resend
+  try {
+    const element = React.createElement(SignupEmail, {
+      siteName: SITE_NAME,
+      siteUrl: siteUrl(),
+      recipient: email,
+      confirmationUrl,
+      displayName,
+    });
+    const html = await render(element);
+    const text = await render(element, { plainText: true });
+    await sendEmail({
+      to: email,
+      from: AUTH_FROM_EMAIL,
+      subject: "Confirma tu email — Rheckypolitan",
+      html,
+      text,
+      // New key so re-sends after template fix are not blocked by old idempotency
+      idempotencyKey: `register-v2-${userId}`,
+    });
+  } catch (err) {
+    console.error("[register] resend failed", err);
+    return NextResponse.json(
+      {
+        error:
+          "Cuenta creada pero no pudimos enviar el correo de confirmación. Espera un momento e inténtalo de nuevo o contacta con soporte.",
+        needsConfirmation: true,
+        emailSent: false,
+      },
+      { status: 502 },
+    );
   }
 
   return NextResponse.json({
     ok: true,
-    needsConfirmation: !emailConfirmed,
-    emailSent: Boolean(actionLink),
-    message: emailConfirmed
-      ? "Cuenta creada. Ya puedes iniciar sesión."
-      : "Revisa tu correo para confirmar la cuenta.",
+    needsConfirmation: true,
+    emailSent: true,
+    message: "Revisa tu correo para confirmar la cuenta.",
   });
 }

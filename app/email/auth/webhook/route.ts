@@ -7,11 +7,13 @@ import { MagicLinkEmail } from "@/lib/email-templates/magic-link";
 import { RecoveryEmail } from "@/lib/email-templates/recovery";
 import { EmailChangeEmail } from "@/lib/email-templates/email-change";
 import { ReauthenticationEmail } from "@/lib/email-templates/reauthentication";
-import { AUTH_FROM_EMAIL, SITE_NAME, siteUrl } from "@/lib/email/config";
 import {
-  buildAuthConfirmationUrl,
-  verifySupabaseAuthHook,
-} from "@/lib/email/supabase-auth-hook";
+  AUTH_FROM_EMAIL,
+  SITE_NAME,
+  buildAppAuthCallbackUrl,
+  siteUrl,
+} from "@/lib/email/config";
+import { verifySupabaseAuthHook } from "@/lib/email/supabase-auth-hook";
 import { sendEmail } from "@/lib/email/resend";
 
 export const runtime = "nodejs";
@@ -82,7 +84,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  const confirmationUrl = buildAuthConfirmationUrl(supabaseUrl, payload.email_data);
+  // Host verification on the app (token_hash) so redirects never hit localhost Site URL
+  const confirmationUrl = buildAppAuthCallbackUrl({
+    tokenHash: payload.email_data.token_hash,
+    type: payload.email_data.email_action_type,
+    next: "/",
+  });
   const newEmail =
     payload.user.new_email ?? payload.user.email_new ?? payload.email_data.token_new ?? recipient;
 
@@ -95,6 +102,9 @@ export async function POST(request: Request) {
     email: recipient,
     oldEmail: recipient,
     newEmail,
+    displayName:
+      (payload.user as { user_metadata?: { display_name?: string } }).user_metadata
+        ?.display_name ?? undefined,
   };
 
   const EmailTemplate = EMAIL_TEMPLATES[emailType];
