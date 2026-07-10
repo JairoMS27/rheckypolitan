@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
@@ -20,6 +21,13 @@ import {
   SHELF_ANIM,
   type ShelfMachineState,
 } from "@/lib/shelf-state";
+import {
+  entryPoseForPhase,
+  flyOpacity,
+  flyPoseTransform,
+  targetPoseForPhase,
+  type FlyPose,
+} from "@/lib/fly-pose";
 import { FlipReader, type FlipPage } from "@/components/flip-reader";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -384,8 +392,10 @@ export function MagazineShelf({ issues }: Props) {
           )}
         </svg>
 
+        {/* Keep mounted across exiting→opening→closing so CSS transitions can run */}
         {showFly && state.activeId && (
           <FlyMagazine
+            key={state.activeId}
             phase={state.phase}
             issue={issues.find((i) => i.id === state.activeId)!}
             from={flyFrom}
@@ -447,9 +457,37 @@ function FlyMagazine({
   const leftPct = (from.x / viewBox.w) * 100;
   const topPct = (from.y / viewBox.h) * 100;
 
-  const exiting = phase === "exiting";
-  const opening = phase === "opening";
-  const closing = phase === "closing";
+  // Pose state: always paint entry pose first, then double-rAF to target so CSS transitions run
+  const [pose, setPose] = useState<FlyPose>(() => entryPoseForPhase(phase));
+  const [transitionsOn, setTransitionsOn] = useState(false);
+
+  useLayoutEffect(() => {
+    const entry = entryPoseForPhase(phase);
+    const target = targetPoseForPhase(phase);
+
+    // First paint: entry pose, no transition (avoids jump-to-end on mount)
+    setTransitionsOn(false);
+    setPose(entry);
+
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        setTransitionsOn(true);
+        setPose(target);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [phase]);
+
+  const duration =
+    phase === "closing"
+      ? SHELF_ANIM.closeMs
+      : phase === "opening"
+        ? SHELF_ANIM.openMs
+        : SHELF_ANIM.exitMs;
 
   const style: React.CSSProperties = {
     position: "absolute",
@@ -460,24 +498,22 @@ function FlyMagazine({
     marginLeft: -from.spineW / 2,
     zIndex: 75,
     transformOrigin: "center bottom",
-    transition: `transform ${
-      closing ? SHELF_ANIM.closeMs : SHELF_ANIM.exitMs
-    }ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${
-      opening ? SHELF_ANIM.openMs : 180
-    }ms ease`,
-    transform: exiting
-      ? "translateY(-130%) scale(1.45) rotate(-10deg)"
-      : opening
-        ? "translateY(-45vh) scale(3.2) rotate(0deg)"
-        : closing
-          ? "translateY(0) scale(1) rotate(0deg)"
-          : "none",
-    opacity: opening ? 0 : 1,
+    transition: transitionsOn
+      ? `transform ${duration}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${duration}ms ease`
+      : "none",
+    transform: flyPoseTransform(pose),
+    opacity: flyOpacity(pose, phase),
     pointerEvents: "none",
   };
 
   return (
-    <div style={style} data-fly-magazine data-fly-phase={phase}>
+    <div
+      style={style}
+      data-fly-magazine
+      data-fly-phase={phase}
+      data-fly-pose={pose}
+      data-fly-transitions={transitionsOn ? "on" : "off"}
+    >
       <div className="relative h-full w-full overflow-hidden border-2 border-[#B22234] bg-foreground shadow-2xl">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element

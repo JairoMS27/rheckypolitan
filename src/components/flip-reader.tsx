@@ -6,6 +6,7 @@ import HTMLFlipBook from "react-pageflip";
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X } from "lucide-react";
 import { publicUrl } from "@/lib/storage";
 import {
+  applyFlipReport,
   clampPageIndex,
   displayPageNumber,
 } from "@/lib/page-index";
@@ -196,7 +197,11 @@ export function FlipReader({
             showPageCorners={false}
             disableFlipByClick={true}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            onFlip={(e: any) => setCurrentPage(clampPageIndex(e.data, totalPages))}
+            onFlip={(e: any) => {
+              // Same path as unit-tested applyFlipReport against this pages list
+              const resolved = applyFlipReport(Number(e.data), pages);
+              setCurrentPage(resolved.index);
+            }}
           >
             {pages.map((p) => (
               <div
