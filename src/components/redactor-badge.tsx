@@ -1,3 +1,8 @@
+"use client";
+
+import Link from "next/link";
+import { profilePath } from "@/lib/username";
+
 /** Distinctive mark next to author name when the account holds the redactor role. */
 export function RedactorBadge({ className = "" }: { className?: string }) {
   return (
@@ -13,17 +18,36 @@ export function RedactorBadge({ className = "" }: { className?: string }) {
 export function AuthorByline({
   author,
   isRedactor,
+  username,
   className = "",
+  /** When true (default), wrap author in profile link if username is set. */
+  link = true,
 }: {
   author: string | null | undefined;
   isRedactor?: boolean;
+  username?: string | null;
   className?: string;
+  link?: boolean;
 }) {
   if (!author) return null;
+
+  const href = link ? profilePath(username) : null;
+  const name = href ? (
+    <Link
+      href={href}
+      className="underline-offset-2 hover:text-[#B22234] hover:underline"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {author}
+    </Link>
+  ) : (
+    <span>{author}</span>
+  );
+
   return (
     <span className={className}>
       {" · "}
-      {author}
+      {name}
       {isRedactor ? <RedactorBadge /> : null}
     </span>
   );

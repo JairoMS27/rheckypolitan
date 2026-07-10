@@ -15,6 +15,7 @@ export function UserMenu() {
   const [profile, setProfile] = useState<{
     display_name: string;
     avatar_url: string | null;
+    username: string | null;
   } | null>(null);
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -27,7 +28,7 @@ export function UserMenu() {
     }
     supabase
       .from("profiles")
-      .select("display_name, avatar_url")
+      .select("display_name, avatar_url, username")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => {
@@ -35,6 +36,7 @@ export function UserMenu() {
           data ?? {
             display_name: user.email?.split("@")[0] ?? "Lector",
             avatar_url: null,
+            username: null,
           },
         );
       });
@@ -123,12 +125,21 @@ export function UserMenu() {
           >
             Mis artículos
           </Link>
+          {profile.username && (
+            <Link
+              href={`/u/${encodeURIComponent(profile.username)}`}
+              onClick={() => setOpen(false)}
+              className="block w-full px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              Ver mi perfil
+            </Link>
+          )}
           <Link
             href="/profile"
             onClick={() => setOpen(false)}
             className="block w-full px-4 py-3 text-left font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
-            Mi perfil
+            Ajustes
           </Link>
           {isStaff && (
             <Link

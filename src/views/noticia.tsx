@@ -10,8 +10,10 @@ import { SECTIONS, sectionLabel } from "@/lib/sections";
 import { UserMenu } from "@/components/user-menu";
 import { CommentsSection } from "@/components/comments-section";
 import { AuthorByline } from "@/components/redactor-badge";
+import { UserAvatar } from "@/components/user-avatar";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { fetchRedactorIdSet } from "@/lib/redactor-badges";
+import { fetchProfileSnippets, type ProfileSnippet } from "@/lib/profiles";
 
 type Post = {
   id: string;
@@ -30,6 +32,7 @@ type Post = {
 export function NoticiaPage({ section, slug }: { section: string; slug: string }) {
   const [post, setPost] = useState<Post | null | undefined>(undefined);
   const [isRedactor, setIsRedactor] = useState(false);
+  const [authorProfile, setAuthorProfile] = useState<ProfileSnippet | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -43,10 +46,15 @@ export function NoticiaPage({ section, slug }: { section: string; slug: string }
       const row = (data as Post | null) ?? null;
       setPost(row);
       if (row?.author_id) {
-        const set = await fetchRedactorIdSet([row.author_id]);
-        setIsRedactor(set.has(row.author_id));
+        const [redactors, profiles] = await Promise.all([
+          fetchRedactorIdSet([row.author_id]),
+          fetchProfileSnippets([row.author_id]),
+        ]);
+        setIsRedactor(redactors.has(row.author_id));
+        setAuthorProfile(profiles.get(row.author_id) ?? null);
       } else {
         setIsRedactor(false);
+        setAuthorProfile(null);
       }
     })();
   }, [section, slug]);
@@ -119,14 +127,28 @@ export function NoticiaPage({ section, slug }: { section: string; slug: string }
         <h1 className="mt-3 font-display text-[clamp(2rem,5vw,4rem)] font-normal leading-[1] tracking-tight">
           {post.title}
         </h1>
-        <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          {new Date(post.published_at).toLocaleDateString("es-ES", {
-            day: "2-digit",
-            month: "long",
-            year: "numeric",
-          })}
-          <AuthorByline author={post.author} isRedactor={isRedactor} />
-        </p>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          {(authorProfile || post.author) && (
+            <UserAvatar
+              displayName={authorProfile?.display_name ?? post.author ?? "Autor"}
+              username={authorProfile?.username}
+              avatarUrl={authorProfile?.avatar_url}
+              size="sm"
+            />
+          )}
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            {new Date(post.published_at).toLocaleDateString("es-ES", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            })}
+            <AuthorByline
+              author={authorProfile?.display_name ?? post.author}
+              isRedactor={isRedactor}
+              username={authorProfile?.username}
+            />
+          </p>
+        </div>
         {post.cover_path && (
           <div className="relative mt-10 aspect-[16/9] w-full overflow-hidden bg-muted">
             <Image

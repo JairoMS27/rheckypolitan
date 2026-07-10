@@ -9,6 +9,7 @@ import { SECTIONS, sectionLabel, type SectionKey } from "@/lib/sections";
 import { UserMenu } from "@/components/user-menu";
 import { AuthorByline } from "@/components/redactor-badge";
 import { fetchRedactorIdSet } from "@/lib/redactor-badges";
+import { fetchProfileSnippets, type ProfileSnippet } from "@/lib/profiles";
 
 type Post = {
   id: string;
@@ -25,6 +26,7 @@ type Post = {
 export function SectionLayout({ section, intro }: { section: SectionKey; intro?: string }) {
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [redactorIds, setRedactorIds] = useState<Set<string>>(new Set());
+  const [profiles, setProfiles] = useState<Map<string, ProfileSnippet>>(new Map());
 
   useEffect(() => {
     (async () => {
@@ -37,7 +39,12 @@ export function SectionLayout({ section, intro }: { section: SectionKey; intro?:
       const rows = (data as Post[] | null) ?? [];
       setPosts(rows);
       const ids = rows.map((p) => p.author_id).filter(Boolean) as string[];
-      setRedactorIds(await fetchRedactorIdSet(ids));
+      const [redactors, profs] = await Promise.all([
+        fetchRedactorIdSet(ids),
+        fetchProfileSnippets(ids),
+      ]);
+      setRedactorIds(redactors);
+      setProfiles(profs);
     })();
   }, [section]);
 
@@ -111,25 +118,28 @@ export function SectionLayout({ section, intro }: { section: SectionKey; intro?:
             </div>
           ) : (
             <ul className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
-              {posts.map((p) => (
-                <li key={p.id} className="group">
-                  <Link href={`/noticia/${section}/${p.slug}`} className="block">
-                    <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-                      {p.cover_path ? (
-                        <Image
-                          src={publicUrl(p.cover_path)}
-                          alt={p.title}
-                          fill
-                          sizes="(max-width: 768px) 100vw, 33vw"
-                          className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                          style={{ objectPosition: p.cover_position ?? "50% 50%" }}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                          Rheckypolitan
-                        </div>
-                      )}
-                    </div>
+              {posts.map((p) => {
+                const authorProf = p.author_id ? profiles.get(p.author_id) : undefined;
+                return (
+                  <li key={p.id} className="group">
+                    <Link href={`/noticia/${section}/${p.slug}`} className="block">
+                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+                        {p.cover_path ? (
+                          <Image
+                            src={publicUrl(p.cover_path)}
+                            alt={p.title}
+                            fill
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                            style={{ objectPosition: p.cover_position ?? "50% 50%" }}
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                            Rheckypolitan
+                          </div>
+                        )}
+                      </div>
+                    </Link>
                     <div className="mt-4">
                       <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                         {new Date(p.published_at).toLocaleDateString("es-ES", {
@@ -138,22 +148,25 @@ export function SectionLayout({ section, intro }: { section: SectionKey; intro?:
                           year: "numeric",
                         })}
                         <AuthorByline
-                          author={p.author}
+                          author={authorProf?.display_name ?? p.author}
                           isRedactor={Boolean(p.author_id && redactorIds.has(p.author_id))}
+                          username={authorProf?.username}
                         />
                       </p>
-                      <h2 className="mt-2 font-display text-2xl leading-tight group-hover:text-[#B22234]">
-                        {p.title}
-                      </h2>
-                      {p.excerpt && (
-                        <p className="mt-2 text-sm leading-relaxed text-foreground/75">
-                          {p.excerpt}
-                        </p>
-                      )}
+                      <Link href={`/noticia/${section}/${p.slug}`} className="block">
+                        <h2 className="mt-2 font-display text-2xl leading-tight group-hover:text-[#B22234]">
+                          {p.title}
+                        </h2>
+                        {p.excerpt && (
+                          <p className="mt-2 text-sm leading-relaxed text-foreground/75">
+                            {p.excerpt}
+                          </p>
+                        )}
+                      </Link>
                     </div>
-                  </Link>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

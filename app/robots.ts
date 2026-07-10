@@ -11,6 +11,7 @@ export default function robots(): MetadataRoute.Robots {
         "/publicar",
         "/publicar/",
         "/profile",
+        "/profile/",
         "/email/",
         "/api/",
         "/unsubscribe",
