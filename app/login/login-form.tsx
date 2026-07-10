@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { EMAIL_NOT_VERIFIED_MESSAGE, isEmailVerified } from "@/lib/auth-email";
 import { HOME_PATH, postLoginDestination } from "@/lib/dashboard-paths";
 import { evaluatePassword, passwordMeetsAllRules } from "@/lib/password";
 import {
@@ -106,8 +107,20 @@ export function LoginForm() {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("email not confirmed") || msg.includes("not confirmed")) {
+          throw new Error(EMAIL_NOT_VERIFIED_MESSAGE);
+        }
+        throw error;
+      }
       if (!data.user) throw new Error("No se pudo iniciar sesión");
+
+      // Defense in depth: block if project allows unconfirmed password login
+      if (!isEmailVerified(data.user)) {
+        await supabase.auth.signOut();
+        throw new Error(EMAIL_NOT_VERIFIED_MESSAGE);
+      }
 
       const destination = safeNext ?? postLoginDestination();
       router.replace(destination);
@@ -184,26 +197,11 @@ export function LoginForm() {
         throw new Error(json.error ?? "No se pudo crear la cuenta");
       }
 
-      if (json.needsConfirmation === false) {
-        // Auto-confirmed projects: sign in immediately
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (!signInError) {
-          toast.success("Cuenta creada", {
-            description: "¡Bienvenido/a a Rheckypolitan!",
-          });
-          router.replace(safeNext ?? postLoginDestination());
-          router.refresh();
-          return;
-        }
-      }
-
+      // Always require email confirmation before session
       toast.success("Revisa tu correo", {
         description:
           json.message ??
-          "Te hemos enviado un enlace para confirmar la cuenta.",
+          "Te hemos enviado un enlace. Hasta que no lo confirmes no podrás iniciar sesión.",
       });
       setMode("login");
       setPassword("");

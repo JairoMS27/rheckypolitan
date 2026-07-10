@@ -129,6 +129,14 @@ export async function POST(request: NextRequest) {
       })
     : null;
 
+  // Force unconfirmed until they click the email link (even if project defaults auto-confirm)
+  const { error: unconfirmErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+    email_confirm: false,
+  });
+  if (unconfirmErr) {
+    console.error("[register] could not force email unconfirmed", unconfirmErr);
+  }
+
   // 3) Ensure profile has the exact chosen username (trigger may have slugified)
   const { error: profileErr } = await supabaseAdmin.from("profiles").upsert(
     {
@@ -149,19 +157,6 @@ export async function POST(request: NextRequest) {
       );
     }
     console.error("[register] profile upsert failed", profileErr);
-  }
-
-  // 4) If project auto-confirms, no email needed
-  const emailConfirmed = Boolean(
-    (linkData.user as { email_confirmed_at?: string | null }).email_confirmed_at,
-  );
-
-  if (emailConfirmed) {
-    return NextResponse.json({
-      ok: true,
-      needsConfirmation: false,
-      message: "Cuenta creada. Ya puedes iniciar sesión.",
-    });
   }
 
   if (!confirmationUrl) {
@@ -212,6 +207,7 @@ export async function POST(request: NextRequest) {
     ok: true,
     needsConfirmation: true,
     emailSent: true,
-    message: "Revisa tu correo para confirmar la cuenta.",
+    message:
+      "Revisa tu correo para confirmar la cuenta. Hasta entonces no podrás iniciar sesión.",
   });
 }

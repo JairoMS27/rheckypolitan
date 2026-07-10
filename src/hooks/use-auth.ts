@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { isEmailVerified } from "@/lib/auth-email";
 
 export type AppRole = "admin" | "redactor";
 
@@ -24,7 +25,16 @@ export function useAuth() {
       setRoles((data ?? []).map((r) => r.role as AppRole));
     };
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
+    const applySession = async (s: Session | null) => {
+      // Reject sessions from accounts that never confirmed email
+      if (s?.user && !isEmailVerified(s.user)) {
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setRoles([]);
+        setLoading(false);
+        return;
+      }
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
@@ -35,13 +45,14 @@ export function useAuth() {
         setRoles([]);
         setLoading(false);
       }
+    };
+
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, s) => {
+      await applySession(s);
     });
 
     supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      if (data.session?.user) await loadRoles(data.session.user.id);
-      setLoading(false);
+      await applySession(data.session);
     });
 
     return () => sub.subscription.unsubscribe();
@@ -49,6 +60,15 @@ export function useAuth() {
 
   const isAdmin = roles.includes("admin");
   const isRedactor = roles.includes("redactor");
+  const emailVerified = isEmailVerified(user);
 
-  return { session, user, roles, isAdmin, isRedactor, loading };
+  return {
+    session,
+    user,
+    roles,
+    isAdmin,
+    isRedactor,
+    emailVerified,
+    loading,
+  };
 }
