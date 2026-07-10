@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-shell";
+import { AdminEmptyState, AdminPageHeader } from "@/components/admin-page-header";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -50,40 +51,48 @@ function Inner() {
 
   return (
     <div>
-      <div className="mb-10 flex items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Newsletter
-          </p>
-          <h2 className="mt-1 font-display text-4xl">Suscriptores</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {subs ? `${subs.length} en total` : "Cargando…"}
-          </p>
-        </div>
-        <input
-          type="search"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Buscar correo…"
-          className="w-64 border border-foreground/20 bg-transparent px-3 py-2 font-mono text-xs focus:border-foreground focus:outline-none"
-        />
-      </div>
+      <AdminPageHeader
+        kicker="Sitio · Newsletter"
+        title="Suscriptores"
+        description={
+          subs
+            ? `${subs.length} lectora${subs.length === 1 ? "" : "s"} en Cartas desde Kentucky.`
+            : "Cargando listado…"
+        }
+        actions={
+          <input
+            type="search"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Buscar correo…"
+            className="w-64 border border-foreground/20 bg-transparent px-3 py-2 font-mono text-xs focus:border-[#B22234] focus:outline-none"
+          />
+        }
+      />
 
       {visible === null ? (
         <p className="font-mono text-xs text-muted-foreground">Cargando…</p>
       ) : visible.length === 0 ? (
-        <div className="border border-dashed border-foreground/30 px-6 py-20 text-center">
-          <p className="font-display text-xl">
-            {subs && subs.length > 0
-              ? "Ningún correo coincide con la búsqueda."
-              : "Aún no hay suscriptores."}
-          </p>
-        </div>
+        <AdminEmptyState
+          title={
+            subs && subs.length > 0
+              ? "Ningún correo coincide"
+              : "Aún no hay suscriptores"
+          }
+          description={
+            subs && subs.length > 0
+              ? "Prueba otra búsqueda."
+              : "Las altas llegan desde el formulario del archivo público."
+          }
+        />
       ) : (
-        <ul className="divide-y divide-foreground/20 border-y border-foreground/20">
+        <ul className="divide-y divide-foreground/15 border border-foreground/15">
           {visible.map((s) => (
-            <li key={s.id} className="flex items-center gap-6 py-3">
-              <div className="flex-1">
+            <li
+              key={s.id}
+              className="flex flex-wrap items-center gap-6 px-4 py-3 hover:bg-muted/30"
+            >
+              <div className="min-w-0 flex-1">
                 <div className="font-mono text-sm">{s.email}</div>
                 <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                   Suscrita/o el{" "}

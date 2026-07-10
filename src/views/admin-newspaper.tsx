@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AdminShell } from "@/components/admin-shell";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { publicUrl } from "@/lib/storage";
 import { sectionLabel } from "@/lib/sections";
+import { authorPostsListPath } from "@/lib/dashboard-paths";
 import { toast } from "sonner";
+import Link from "next/link";
 
 type Post = {
   id: string;
@@ -147,29 +150,40 @@ function NewspaperBuilder() {
 
   return (
     <div>
-      <div className="mb-10 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Maquetar
-          </p>
-          <h2 className="mt-1 font-display text-4xl">Crear periódico</h2>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={generateJpg}
-            disabled={generating || Object.keys(selections).length === 0}
-          >
-            {generating ? "…" : "Descargar JPG"}
-          </Button>
-          <Button
-            onClick={generatePdf}
-            disabled={generating || Object.keys(selections).length === 0}
-          >
-            {generating ? "Generando…" : "Descargar PDF"}
-          </Button>
-        </div>
-      </div>
+      <AdminPageHeader
+        kicker="Revistas · Periódico"
+        title="Maquetar periódico"
+        description={
+          <>
+            Compón una edición a partir de artículos publicados. Para escribir o editar piezas,
+            usa{" "}
+            <Link
+              href={authorPostsListPath()}
+              className="text-[#B22234] underline underline-offset-2"
+            >
+              /publicar
+            </Link>
+            .
+          </>
+        }
+        actions={
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={generateJpg}
+              disabled={generating || Object.keys(selections).length === 0}
+            >
+              {generating ? "…" : "Descargar JPG"}
+            </Button>
+            <Button
+              onClick={generatePdf}
+              disabled={generating || Object.keys(selections).length === 0}
+            >
+              {generating ? "Generando…" : "Descargar PDF"}
+            </Button>
+          </div>
+        }
+      />
 
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>

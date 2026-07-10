@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AdminShell } from "@/components/admin-shell";
+import {
+  AdminEmptyState,
+  AdminPageHeader,
+  AdminPanel,
+} from "@/components/admin-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,57 +78,62 @@ function UsersAdmin() {
   };
 
   return (
-    <div className="space-y-12">
-      <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Equipo
-        </p>
-        <h2 className="mt-1 font-display text-4xl">Redactores</h2>
-      </div>
+    <div className="space-y-10">
+      <AdminPageHeader
+        kicker="Equipo · Redactores"
+        title="Redactores"
+        description="Cuentas de staff con acceso al periódico y herramientas de equipo. No es el listado de autores de artículos."
+      />
 
-      <form
-        onSubmit={submit}
-        className="grid gap-4 border border-foreground/15 p-6 md:grid-cols-[1fr_1fr_auto] md:items-end"
-      >
-        <div>
-          <Label className="text-[11px] uppercase tracking-widest">Email</Label>
-          <Input
-            required
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-2"
-          />
-        </div>
-        <div>
-          <Label className="text-[11px] uppercase tracking-widest">Contraseña</Label>
-          <Input
-            required
-            minLength={10}
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-2"
-            placeholder="mínimo 10 caracteres"
-          />
-        </div>
-        <Button type="submit" disabled={saving}>
-          {saving ? "Creando…" : "Crear redactor"}
-        </Button>
-      </form>
+      <AdminPanel title="Alta de redactor">
+        <form
+          onSubmit={submit}
+          className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end"
+        >
+          <div>
+            <Label className="font-mono text-[10px] uppercase tracking-widest">Email</Label>
+            <Input
+              required
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-2"
+            />
+          </div>
+          <div>
+            <Label className="font-mono text-[10px] uppercase tracking-widest">Contraseña</Label>
+            <Input
+              required
+              minLength={10}
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-2"
+              placeholder="mínimo 10 caracteres"
+            />
+          </div>
+          <Button type="submit" disabled={saving} className="font-mono text-[10px] uppercase tracking-widest">
+            {saving ? "Creando…" : "Crear redactor"}
+          </Button>
+        </form>
+      </AdminPanel>
 
       <div>
         {isLoading ? (
           <p className="font-mono text-xs text-muted-foreground">Cargando…</p>
         ) : !data?.users.length ? (
-          <div className="border border-dashed border-foreground/30 px-6 py-16 text-center">
-            <p className="font-display text-xl">Aún no hay redactores.</p>
-          </div>
+          <AdminEmptyState
+            title="Aún no hay redactores"
+            description="Crea la primera cuenta de staff con el formulario de arriba."
+          />
         ) : (
-          <ul className="divide-y divide-foreground/20 border-y border-foreground/20">
+          <ul className="divide-y divide-foreground/15 border border-foreground/15">
             {data.users.map((u) => (
-              <li key={u.id} className="flex items-center justify-between py-4">
+              <li
+                key={u.id}
+                className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 hover:bg-muted/30"
+              >
                 <div>
                   <p className="font-display text-lg">{u.email}</p>
                   <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">

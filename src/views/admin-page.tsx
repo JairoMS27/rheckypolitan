@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-shell";
+import { AdminEmptyState, AdminPageHeader } from "@/components/admin-page-header";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { publicUrl } from "@/lib/storage";
+import { authorPostsListPath } from "@/lib/dashboard-paths";
 import { toast } from "sonner";
 
 type Issue = {
@@ -99,37 +101,52 @@ function Inner() {
 
   return (
     <div>
-      <div className="mb-10 flex items-end justify-between">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Panel admin · Revistas
-          </p>
-          <h2 className="mt-1 font-display text-4xl">Números de la revista</h2>
-          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-            Gestión de revistas digitales (issues). Los artículos de sección se publican en{" "}
-            <Link href="/publicar" className="underline underline-offset-2 hover:text-[#B22234]">
+      <AdminPageHeader
+        kicker="Revistas · Archivo"
+        title="Números de la revista"
+        description={
+          <>
+            Aquí gestionas las <strong className="font-medium text-foreground">revistas digitales</strong>{" "}
+            (números con portada y páginas). Los{" "}
+            <strong className="font-medium text-foreground">artículos</strong> de sección viven en{" "}
+            <Link
+              href={authorPostsListPath()}
+              className="text-[#B22234] underline underline-offset-2 hover:text-[#8B1A29]"
+            >
               /publicar
             </Link>
             .
-          </p>
-        </div>
-        <Link href="/admin/new">
-          <Button>+ Nueva revista</Button>
-        </Link>
-      </div>
+          </>
+        }
+        actions={
+          <Link href="/admin/new">
+            <Button className="font-mono text-[10px] uppercase tracking-widest">
+              + Nueva revista
+            </Button>
+          </Link>
+        }
+      />
 
       {issues === null ? (
         <p className="font-mono text-xs text-muted-foreground">Cargando…</p>
       ) : issues.length === 0 ? (
-        <div className="border border-dashed border-foreground/30 px-6 py-20 text-center">
-          <p className="font-display text-xl">Aún no hay revistas.</p>
-          <p className="mt-2 text-sm text-muted-foreground">Crea el primer número.</p>
-        </div>
+        <AdminEmptyState
+          title="Aún no hay revistas"
+          description="Publica el primer número del archivo digital."
+          action={
+            <Link href="/admin/new">
+              <Button>+ Nueva revista</Button>
+            </Link>
+          }
+        />
       ) : (
-        <ul className="divide-y divide-foreground/20 border-y border-foreground/20">
+        <ul className="divide-y divide-foreground/15 border border-foreground/15">
           {issues.map((i) => (
-            <li key={i.id} className="flex items-center gap-6 py-4">
-              <div className="h-20 w-16 shrink-0 bg-muted">
+            <li
+              key={i.id}
+              className="flex flex-wrap items-center gap-6 px-4 py-5 transition hover:bg-muted/30"
+            >
+              <div className="h-24 w-16 shrink-0 border border-foreground/10 bg-muted">
                 {i.cover_path && (
                   <img
                     src={publicUrl(i.cover_path)}
@@ -138,13 +155,14 @@ function Inner() {
                   />
                 )}
               </div>
-              <div className="flex-1">
-                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  N.º {String(i.number).padStart(2, "0")} · {i.page_count} páginas
+              <div className="min-w-0 flex-1">
+                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#B22234]">
+                  N.º {String(i.number).padStart(2, "0")} · {i.page_count} páginas ·{" "}
+                  {new Date(i.published_at).toLocaleDateString("es-ES")}
                 </div>
-                <div className="font-display text-xl">{i.title}</div>
+                <div className="mt-1 font-display text-2xl leading-tight">{i.title}</div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Link href={`/revista/${i.number}`}>
                   <Button variant="outline" size="sm">
                     Ver

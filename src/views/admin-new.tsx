@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AdminShell } from "@/components/admin-shell";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { PageUploader, type PageFile } from "@/components/page-uploader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -135,12 +136,11 @@ function NewIssue() {
 
   return (
     <form onSubmit={submit} className="space-y-10">
-      <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Nueva
-        </p>
-        <h2 className="mt-1 font-display text-4xl">Crear número</h2>
-      </div>
+      <AdminPageHeader
+        kicker="Revistas · Nuevo número"
+        title="Publicar revista"
+        description="Portada, páginas y ficha del número. No confundir con artículos de sección (/publicar)."
+      />
 
       <div className="grid gap-6 md:grid-cols-3">
         <div>

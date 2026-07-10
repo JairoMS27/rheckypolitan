@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/admin-shell";
+import { AdminPageHeader } from "@/components/admin-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -182,17 +183,16 @@ function EditIssue() {
 
   return (
     <div className="space-y-10">
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Editando
-          </p>
-          <h2 className="mt-1 font-display text-4xl">N.º {number}</h2>
-        </div>
-        <Button variant="outline" onClick={() => router.push("/admin")}>
-          Volver
-        </Button>
-      </div>
+      <AdminPageHeader
+        kicker="Revistas · Editar número"
+        title={number ? `N.º ${number}` : "Editar revista"}
+        description={title || "Actualiza portada, páginas y ficha del número."}
+        actions={
+          <Button variant="outline" onClick={() => router.push("/admin")}>
+            ← Archivo
+          </Button>
+        }
+      />
 
       <section className="grid gap-6 md:grid-cols-3">
         <div>
