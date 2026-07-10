@@ -20,6 +20,7 @@ import { RichEditor } from "@/components/rich-editor";
 import { SECTIONS, slugify, type SectionKey } from "@/lib/sections";
 import { useAuth } from "@/hooks/use-auth";
 import { authorPostsListPath } from "@/lib/dashboard-paths";
+import { saveAuthorPost, uploadAuthorImage } from "@/lib/author-api";
 
 export type PostInput = {
   id?: string;
@@ -62,24 +63,14 @@ export function PostForm({
     }));
   };
 
-  const uploadCover = async (postId: string): Promise<string | null> => {
-    if (!coverFile) return data.cover_path;
-    const ext = coverFile.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const path = `posts/${postId}/cover-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage
-      .from("magazines")
-      .upload(path, coverFile, { upsert: true, contentType: coverFile.type });
-    if (error) throw error;
-    return path;
-  };
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return toast.error("Inicia sesión para publicar");
     if (!data.title.trim()) return toast.error("Falta el título");
     if (!data.slug.trim()) return toast.error("Falta el slug");
     setSaving(true);
     try {
-      const payload = {
+      const base = {
         section: data.section,
         slug: slugify(data.slug),
         title: data.title.trim(),
@@ -89,34 +80,28 @@ export function PostForm({
         published: data.published,
         published_at: new Date(data.published_at).toISOString(),
         cover_position: data.cover_position || "50% 50%",
+        cover_path: data.cover_path,
       };
 
+      // Create first if new so we have an id for cover path posts/{id}/...
       let postId = data.id;
-      if (postId) {
-        const cover = await uploadCover(postId);
-        const { error } = await supabase
-          .from("posts")
-          .update({ ...payload, cover_path: cover })
-          .eq("id", postId);
-        if (error) throw error;
-      } else {
-        const { data: inserted, error } = await supabase
-          .from("posts")
-          .insert({
-            ...payload,
-            cover_path: null,
-            author_id: user?.id ?? null,
-          })
-          .select()
-          .single();
-        if (error || !inserted) throw error ?? new Error("No se pudo crear");
-        const newPostId = inserted.id;
-        postId = newPostId;
-        if (coverFile) {
-          const cover = await uploadCover(newPostId);
-          await supabase.from("posts").update({ cover_path: cover }).eq("id", newPostId);
-        }
+      if (!postId) {
+        const created = await saveAuthorPost({ ...base, cover_path: null });
+        postId = created.id;
       }
+
+      let coverPath = data.cover_path;
+      if (coverFile && postId) {
+        const up = await uploadAuthorImage(coverFile, { kind: "cover", postId });
+        coverPath = up.path;
+      }
+
+      await saveAuthorPost({
+        ...base,
+        id: postId,
+        cover_path: coverPath,
+      });
+
       toast.success("Guardado");
       router.push(returnTo);
     } catch (err: any) {

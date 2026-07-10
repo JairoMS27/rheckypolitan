@@ -6,8 +6,8 @@ import Youtube from "@tiptap/extension-youtube";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { uploadAuthorImage } from "@/lib/author-api";
 import {
   Bold,
   Italic,
@@ -58,13 +58,9 @@ function ToolbarBtn({
 }
 
 async function uploadInlineImage(file: File): Promise<string> {
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-  const path = `posts/uploads/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage
-    .from("magazines")
-    .upload(path, file, { upsert: false, contentType: file.type });
-  if (error) throw error;
-  return supabase.storage.from("magazines").getPublicUrl(path).data.publicUrl;
+  // Any logged-in author — server uploads under posts/ only (never revistas).
+  const { publicUrl } = await uploadAuthorImage(file, { kind: "inline" });
+  return publicUrl;
 }
 
 function Toolbar({ editor }: { editor: Editor }) {

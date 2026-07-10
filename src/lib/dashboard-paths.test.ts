@@ -4,6 +4,7 @@ import {
   authorPostNewPath,
   authorPostsListPath,
   authorPublishBasePath,
+  canPublishArticles,
   isAdminRole,
   isAuthorPublishPath,
   isStaffRole,
@@ -60,6 +61,13 @@ describe("staff helpers", () => {
   test("admin dashboard path is separate from author publish", () => {
     expect(ADMIN_DASHBOARD_PATH).toBe("/admin");
     expect(ADMIN_DASHBOARD_PATH).not.toBe(authorPublishBasePath());
+  });
+});
+
+describe("canPublishArticles", () => {
+  test("any authenticated account can publish articles (no staff role required)", () => {
+    expect(canPublishArticles(true)).toBe(true);
+    expect(canPublishArticles(false)).toBe(false);
   });
 });
 

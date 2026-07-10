@@ -4,63 +4,49 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthorShell } from "@/components/author-shell";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { publicUrl } from "@/lib/storage";
 import { SECTIONS, sectionLabel } from "@/lib/sections";
-import { useAuth } from "@/hooks/use-auth";
 import {
   authorPostEditPath,
   authorPostNewPath,
   authorPostsListPath,
 } from "@/lib/dashboard-paths";
+import {
+  deleteAuthorPost,
+  fetchAuthorPosts,
+  type AuthorPostRow,
+} from "@/lib/author-api";
 import { toast } from "sonner";
 
-type Row = {
-  id: string;
-  section: string;
-  slug: string;
-  title: string;
-  cover_path: string | null;
-  published: boolean;
-  published_at: string;
-  author_id: string | null;
-};
-
 function PostsList() {
-  const { user, isAdmin } = useAuth();
-  const [rows, setRows] = useState<Row[] | null>(null);
+  const [rows, setRows] = useState<AuthorPostRow[] | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [filter, setFilter] = useState<string>("all");
 
   const load = async () => {
-    let q = supabase
-      .from("posts")
-      .select("id,section,slug,title,cover_path,published,published_at,author_id")
-      .order("published_at", { ascending: false });
-    if (!isAdmin && user?.id) {
-      q = q.eq("author_id", user.id);
+    try {
+      const { posts, isAdmin: admin } = await fetchAuthorPosts();
+      setRows(posts);
+      setIsAdmin(admin);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error al cargar";
+      toast.error(message);
+      setRows([]);
     }
-    const { data } = await q;
-    setRows(data ?? []);
   };
 
   useEffect(() => {
-    if (user) void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isAdmin]);
+    void load();
+  }, []);
 
-  const remove = async (r: Row) => {
+  const remove = async (r: AuthorPostRow) => {
     if (!confirm(`¿Borrar "${r.title}"?`)) return;
-    const { data: files } = await supabase.storage
-      .from("magazines")
-      .list(`posts/${r.id}`, { limit: 100 });
-    if (files?.length) {
-      await supabase.storage.from("magazines").remove(files.map((f) => `posts/${r.id}/${f.name}`));
-    }
-    const { error } = await supabase.from("posts").delete().eq("id", r.id);
-    if (error) toast.error(error.message);
-    else {
+    try {
+      await deleteAuthorPost(r.id);
       toast.success("Eliminado");
       load();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "No se pudo borrar");
     }
   };
 
@@ -77,8 +63,8 @@ function PostsList() {
             {isAdmin ? "Todos los artículos" : "Mis artículos"}
           </h1>
           <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-            Aquí publicas y editas artículos del archivo. Las revistas digitales se gestionan
-            solo desde el panel de administración.
+            Cualquier cuenta puede publicar artículos e imágenes aquí. Las revistas digitales
+            (números) solo las gestiona el equipo admin.
           </p>
         </div>
         <Link href={authorPostNewPath()}>
@@ -119,7 +105,7 @@ function PostsList() {
       ) : filtered.length === 0 ? (
         <div className="border border-dashed border-foreground/30 px-6 py-20 text-center">
           <p className="font-display text-xl">Aún no hay artículos.</p>
-          <p className="mt-2 text-sm text-muted-foreground">Escribe el primero desde aquí.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Cualquier cuenta puede publicar el primero.</p>
           <Link href={authorPostNewPath()} className="mt-6 inline-block">
             <Button>Publicar artículo</Button>
           </Link>
@@ -157,18 +143,16 @@ function PostsList() {
                     Editar
                   </Button>
                 </Link>
-                {(isAdmin || r.author_id === user?.id) && (
-                  <Button variant="outline" size="sm" onClick={() => remove(r)}>
-                    Borrar
-                  </Button>
-                )}
+                <Button variant="outline" size="sm" onClick={() => remove(r)}>
+                  Borrar
+                </Button>
               </div>
             </li>
           ))}
         </ul>
       )}
       <p className="mt-8 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        Ruta autor: {authorPostsListPath()} · no es el panel de revistas
+        Espacio de autor: {authorPostsListPath()} · revistas solo en /admin
       </p>
     </div>
   );

@@ -38,6 +38,14 @@ export function isAdminRole(roles: readonly string[]): boolean {
   return roles.includes("admin");
 }
 
+/**
+ * Any logged-in account may publish artículos (and images under posts/).
+ * Staff roles are not required. Revistas remain admin-only elsewhere.
+ */
+export function canPublishArticles(isAuthenticated: boolean): boolean {
+  return isAuthenticated;
+}
+
 /** True when path is the public author publish surface. */
 export function isAuthorPublishPath(pathname: string): boolean {
   if (!pathname) return false;

@@ -12,18 +12,27 @@ RETURNS BOOLEAN
 LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public
 AS $$ SELECT public.has_role(auth.uid(), 'redactor'::public.app_role) $$;
 
+-- Any authenticated account may manage their own artículos (not only redactor role).
 DROP POLICY IF EXISTS "Redactors read own posts" ON public.posts;
-CREATE POLICY "Redactors read own posts"
+DROP POLICY IF EXISTS "Authors read own posts" ON public.posts;
+CREATE POLICY "Authors read own posts"
   ON public.posts FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'redactor'::public.app_role) AND author_id = auth.uid());
+  USING (author_id = auth.uid());
 
 DROP POLICY IF EXISTS "Redactors insert own posts" ON public.posts;
-CREATE POLICY "Redactors insert own posts"
+DROP POLICY IF EXISTS "Authors insert own posts" ON public.posts;
+CREATE POLICY "Authors insert own posts"
   ON public.posts FOR INSERT TO authenticated
-  WITH CHECK (public.has_role(auth.uid(), 'redactor'::public.app_role) AND author_id = auth.uid());
+  WITH CHECK (author_id = auth.uid());
 
 DROP POLICY IF EXISTS "Redactors update own posts" ON public.posts;
-CREATE POLICY "Redactors update own posts"
+DROP POLICY IF EXISTS "Authors update own posts" ON public.posts;
+CREATE POLICY "Authors update own posts"
   ON public.posts FOR UPDATE TO authenticated
-  USING (public.has_role(auth.uid(), 'redactor'::public.app_role) AND author_id = auth.uid())
-  WITH CHECK (public.has_role(auth.uid(), 'redactor'::public.app_role) AND author_id = auth.uid());
+  USING (author_id = auth.uid())
+  WITH CHECK (author_id = auth.uid());
+
+DROP POLICY IF EXISTS "Authors delete own posts" ON public.posts;
+CREATE POLICY "Authors delete own posts"
+  ON public.posts FOR DELETE TO authenticated
+  USING (author_id = auth.uid());
