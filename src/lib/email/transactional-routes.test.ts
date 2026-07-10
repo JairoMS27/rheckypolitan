@@ -221,7 +221,7 @@ describe("transactional API routes", () => {
     expect(logEmailSend).toHaveBeenCalled();
   });
 
-  test("subscribe returns 502 when Resend send fails", async () => {
+  test("subscribe still succeeds when Resend send fails (subscription saved)", async () => {
     sendTemplateEmail.mockImplementation(async () => ({
       ok: false as const,
       messageId: "newsletter-confirm-a@b.com",
@@ -233,7 +233,10 @@ describe("transactional API routes", () => {
       body: JSON.stringify({ email: "a@b.com" }),
     });
     const res = await subscribePOST(req);
-    expect(res.status).toBe(502);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.ok).toBe(true);
+    expect(json.sent).toBe(false);
     expect(sendTemplateEmail).toHaveBeenCalledTimes(1);
   });
 

@@ -5,6 +5,7 @@ import { publicUrl } from "@/lib/storage";
 import { SECTIONS, sectionLabel, type SectionKey } from "@/lib/sections";
 import { UserMenu } from "@/components/user-menu";
 import { CommentsSection } from "@/components/comments-section";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 export const Route = createFileRoute("/noticia/$section/$slug")({
   component: PostPage,
@@ -142,7 +143,7 @@ function PostPage() {
         )}
         <article
           className="post-content mt-10 text-[17px] leading-[1.7]"
-          dangerouslySetInnerHTML={{ __html: post.content_html }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content_html) }}
         />
         <style>{`
           .post-content p { margin: 1em 0; }

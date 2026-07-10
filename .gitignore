@@ -14,6 +14,8 @@ pnpm-lock.yaml
 
 # Build output
 .next
+out
+build
 dist
 dist-ssr
 .output
@@ -21,17 +23,31 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+tsconfig.tsbuildinfo
+*.tsbuildinfo
 
-# Environment variables
+# Environment variables & secrets (never commit)
 .env
 .env.*
 !.env.example
+.dev.vars
+*.pem
+*.p12
+*.pfx
+*.key
+!*.key.ts
+!*.key.tsx
+id_rsa
+id_rsa.pub
+credentials.json
+service-account*.json
+secrets/
 
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
 
-# Editor / IDE
+# Editor / IDE / OS
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -42,14 +58,36 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+*.swp
+*~
 
-# Cursor MCP (local tooling)
+# Cursor / local agent tooling
 mcps/
 terminals/
 .agents/
 agent-tools/
 skills-lock.json
-supabase/.temp/
+.cursor/
+.grok/
 
-# Test / coverage
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+
+# Test / coverage / caches
 coverage
+.nyc_output
+.cache
+.eslintcache
+.turbo
+.vercel
+.pnpm-store
+
+# Debug / profiling
+*.heapsnapshot
+chrome-profiler-events*.json
+speed-measure-plugin*.json
+
+# Optional: keep OS junk out
+desktop.ini
+$RECYCLE.BIN/

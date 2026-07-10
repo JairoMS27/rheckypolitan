@@ -40,7 +40,7 @@ export async function listRedactors(supabase: SupabaseClient, userId: string) {
 
 export async function createRedactor(supabase: SupabaseClient, userId: string, data: CreateInput) {
   if (!data?.email || !data?.password) throw new Error("Email y contraseña requeridos");
-  if (data.password.length < 6) throw new Error("Contraseña mínima 6 caracteres");
+  if (data.password.length < 10) throw new Error("Contraseña mínima 10 caracteres");
 
   await ensureAdmin(supabase, userId);
 
@@ -59,8 +59,25 @@ export async function createRedactor(supabase: SupabaseClient, userId: string, d
 
 export async function deleteRedactor(supabase: SupabaseClient, userId: string, data: DeleteInput) {
   if (!data?.userId) throw new Error("userId requerido");
+  if (data.userId === userId) throw new Error("No puedes eliminarte a ti mismo");
 
   await ensureAdmin(supabase, userId);
+
+  // Only allow deleting users that currently hold the redactor role (never admins).
+  const { data: roleRow } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", data.userId)
+    .eq("role", "redactor")
+    .maybeSingle();
+  if (!roleRow) throw new Error("Solo se pueden eliminar cuentas de redactor");
+
+  const { error: roleErr } = await supabaseAdmin
+    .from("user_roles")
+    .delete()
+    .eq("user_id", data.userId)
+    .eq("role", "redactor");
+  if (roleErr) throw roleErr;
 
   const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
   if (error) throw error;

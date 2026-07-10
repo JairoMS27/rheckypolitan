@@ -333,6 +333,37 @@ CREATE POLICY "magazines admin delete" ON storage.objects
   FOR DELETE TO authenticated
   USING (bucket_id = 'magazines' AND public.has_role(auth.uid(), 'admin'));
 
+-- Redactors: only paths under posts/ (covers + inline images)
+DROP POLICY IF EXISTS "magazines redactor insert posts" ON storage.objects;
+CREATE POLICY "magazines redactor insert posts"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'magazines'
+    AND public.has_role(auth.uid(), 'redactor')
+    AND (storage.foldername(name))[1] = 'posts'
+  );
+DROP POLICY IF EXISTS "magazines redactor update posts" ON storage.objects;
+CREATE POLICY "magazines redactor update posts"
+  ON storage.objects FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'magazines'
+    AND public.has_role(auth.uid(), 'redactor')
+    AND (storage.foldername(name))[1] = 'posts'
+  )
+  WITH CHECK (
+    bucket_id = 'magazines'
+    AND public.has_role(auth.uid(), 'redactor')
+    AND (storage.foldername(name))[1] = 'posts'
+  );
+DROP POLICY IF EXISTS "magazines redactor delete posts" ON storage.objects;
+CREATE POLICY "magazines redactor delete posts"
+  ON storage.objects FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'magazines'
+    AND public.has_role(auth.uid(), 'redactor')
+    AND (storage.foldername(name))[1] = 'posts'
+  );
+
 DROP POLICY IF EXISTS "Avatars are publicly readable" ON storage.objects;
 CREATE POLICY "Avatars are publicly readable"
   ON storage.objects FOR SELECT USING (bucket_id = 'avatars');

@@ -86,9 +86,21 @@ export function HomePage() {
         });
         return;
       }
-      toast.success("Gracias por suscribirte", {
-        description: "Te acabamos de mandar una Carta desde Kentucky.",
-      });
+      if (data?.already && data?.sent) {
+        toast.success("Ya estabas suscrita/o", {
+          description: "Te reenviamos la Carta de bienvenida.",
+        });
+      } else if (data?.sent === false) {
+        toast.success(data?.already ? "Ya estabas suscrita/o" : "Gracias por suscribirte", {
+          description:
+            data?.warning ??
+            "Estás en la lista. El correo de confirmación puede tardar un momento.",
+        });
+      } else {
+        toast.success("Gracias por suscribirte", {
+          description: "Te acabamos de mandar una Carta desde Kentucky.",
+        });
+      }
       setEmail("");
       refetchSubs();
     } catch {

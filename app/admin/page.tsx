@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireAdminPage } from "@/lib/auth";
 import { AdminPage } from "@/views/admin-page";
 
 export const metadata: Metadata = {
@@ -6,6 +7,7 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default function Page() {
+export default async function Page() {
+  await requireAdminPage();
   return <AdminPage />;
 }

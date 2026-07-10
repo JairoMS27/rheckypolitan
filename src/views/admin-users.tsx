@@ -99,12 +99,13 @@ function UsersAdmin() {
           <Label className="text-[11px] uppercase tracking-widest">Contraseña</Label>
           <Input
             required
-            minLength={6}
-            type="text"
+            minLength={10}
+            type="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-2"
-            placeholder="mínimo 6 caracteres"
+            placeholder="mínimo 10 caracteres"
           />
         </div>
         <Button type="submit" disabled={saving}>

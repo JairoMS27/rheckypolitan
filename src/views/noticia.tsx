@@ -9,6 +9,7 @@ import { publicUrl } from "@/lib/storage";
 import { SECTIONS, sectionLabel } from "@/lib/sections";
 import { UserMenu } from "@/components/user-menu";
 import { CommentsSection } from "@/components/comments-section";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 type Post = {
   id: string;
@@ -135,7 +136,7 @@ export function NoticiaPage({ section, slug }: { section: string; slug: string }
         )}
         <article
           className="post-content mt-10 text-[17px] leading-[1.7]"
-          dangerouslySetInnerHTML={{ __html: post.content_html }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content_html) }}
         />
         <style>{`
           .post-content p { margin: 1em 0; }

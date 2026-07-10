@@ -39,6 +39,8 @@ export function AdminShell({
     );
   }
 
+  const isStaff = isAdmin || isRedactor;
+
   if (adminOnly && !isAdmin) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
@@ -50,8 +52,21 @@ export function AdminShell({
     );
   }
 
-  const isStaff = isAdmin || isRedactor;
-  const roleLabel = isAdmin ? "Admin" : isRedactor ? "Redactor" : "Autor";
+  if (!isStaff) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+        <p className="font-display text-2xl">Acceso restringido</p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          Esta zona es solo para el equipo editorial.
+        </p>
+        <Link href="/" className="text-xs uppercase tracking-widest underline">
+          Volver al inicio
+        </Link>
+      </div>
+    );
+  }
+
+  const roleLabel = isAdmin ? "Admin" : "Redactor";
 
   return (
     <div className="min-h-screen bg-background text-foreground">
