@@ -9,7 +9,9 @@ import { publicUrl } from "@/lib/storage";
 import { SECTIONS, sectionLabel } from "@/lib/sections";
 import { UserMenu } from "@/components/user-menu";
 import { CommentsSection } from "@/components/comments-section";
+import { AuthorByline } from "@/components/redactor-badge";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import { fetchRedactorIdSet } from "@/lib/redactor-badges";
 
 type Post = {
   id: string;
@@ -21,11 +23,13 @@ type Post = {
   cover_position: string | null;
   content_html: string;
   author: string | null;
+  author_id: string | null;
   published_at: string;
 };
 
 export function NoticiaPage({ section, slug }: { section: string; slug: string }) {
   const [post, setPost] = useState<Post | null | undefined>(undefined);
+  const [isRedactor, setIsRedactor] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -36,7 +40,14 @@ export function NoticiaPage({ section, slug }: { section: string; slug: string }
         .eq("slug", slug)
         .eq("published", true)
         .maybeSingle();
-      setPost((data as Post | null) ?? null);
+      const row = (data as Post | null) ?? null;
+      setPost(row);
+      if (row?.author_id) {
+        const set = await fetchRedactorIdSet([row.author_id]);
+        setIsRedactor(set.has(row.author_id));
+      } else {
+        setIsRedactor(false);
+      }
     })();
   }, [section, slug]);
 
@@ -114,7 +125,7 @@ export function NoticiaPage({ section, slug }: { section: string; slug: string }
             month: "long",
             year: "numeric",
           })}
-          {post.author && <> · {post.author}</>}
+          <AuthorByline author={post.author} isRedactor={isRedactor} />
         </p>
         {post.cover_path && (
           <div className="relative mt-10 aspect-[16/9] w-full overflow-hidden bg-muted">

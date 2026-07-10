@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { RegisteredUser } from "@/lib/admin-users.functions";
+import { RedactorBadge } from "@/components/redactor-badge";
 
 async function authFetch(url: string, init?: RequestInit) {
   const { data: sess } = await supabase.auth.getSession();
@@ -33,16 +35,16 @@ async function authFetch(url: string, init?: RequestInit) {
 
 function UsersAdmin() {
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["redactors"],
+    queryKey: ["registered-users"],
     queryFn: () =>
-      authFetch("/api/admin/users") as Promise<{
-        users: { id: string; email: string; created_at: string }[];
-      }>,
+      authFetch("/api/admin/users") as Promise<{ users: RegisteredUser[] }>,
   });
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,40 +54,100 @@ function UsersAdmin() {
         method: "POST",
         body: JSON.stringify({ email: email.trim(), password }),
       });
-      toast.success("Redactor creado");
+      toast.success("Usuario registrado");
       setEmail("");
       setPassword("");
       refetch();
-    } catch (err: any) {
-      toast.error(err.message ?? "Error");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error");
     } finally {
       setSaving(false);
     }
   };
 
-  const del = async (id: string, userEmail: string) => {
-    if (!confirm(`¿Borrar al redactor ${userEmail}?`)) return;
+  const promote = async (u: RegisteredUser) => {
+    if (!confirm(`¿Ascender a redactor a ${u.email}?`)) return;
+    setBusyId(u.id);
+    try {
+      await authFetch("/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({ action: "promote", userId: u.id }),
+      });
+      toast.success("Ascendido a redactor");
+      refetch();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const demote = async (u: RegisteredUser) => {
+    if (!confirm(`¿Quitar rol de redactor a ${u.email}?`)) return;
+    setBusyId(u.id);
+    try {
+      await authFetch("/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({ action: "demote", userId: u.id }),
+      });
+      toast.success("Rol de redactor retirado");
+      refetch();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const del = async (u: RegisteredUser) => {
+    if (u.isAdmin) {
+      toast.error("No se pueden eliminar admins");
+      return;
+    }
+    if (!confirm(`¿Eliminar la cuenta ${u.email}? Esta acción no se puede deshacer.`)) return;
+    setBusyId(u.id);
     try {
       await authFetch("/api/admin/users", {
         method: "DELETE",
-        body: JSON.stringify({ userId: id }),
+        body: JSON.stringify({ userId: u.id }),
       });
-      toast.success("Eliminado");
+      toast.success("Usuario eliminado");
       refetch();
-    } catch (err: any) {
-      toast.error(err.message ?? "Error");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    } finally {
+      setBusyId(null);
     }
   };
+
+  const users = data?.users ?? [];
+  const q = filter.trim().toLowerCase();
+  const visible = q
+    ? users.filter(
+        (u) =>
+          u.email.toLowerCase().includes(q) ||
+          (u.display_name ?? "").toLowerCase().includes(q),
+      )
+    : users;
 
   return (
     <div className="space-y-10">
       <AdminPageHeader
-        kicker="Equipo · Redactores"
-        title="Redactores"
-        description="Cuentas de staff con acceso al periódico y herramientas de equipo. No es el listado de autores de artículos."
+        kicker="Equipo · Usuarios"
+        title="Usuarios registrados"
+        description="Listado de cuentas (sin edición de datos). Puedes registrar, eliminar o ascender a redactor. Los redactores publican artículos e imágenes; las revistas siguen solo para admin."
+        actions={
+          <input
+            type="search"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Buscar…"
+            className="w-56 border border-foreground/20 bg-transparent px-3 py-2 font-mono text-xs focus:border-[#B22234] focus:outline-none"
+          />
+        }
       />
 
-      <AdminPanel title="Alta de redactor">
+      <AdminPanel title="Registrar cuenta">
         <form
           onSubmit={submit}
           className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end"
@@ -113,8 +175,12 @@ function UsersAdmin() {
               placeholder="mínimo 10 caracteres"
             />
           </div>
-          <Button type="submit" disabled={saving} className="font-mono text-[10px] uppercase tracking-widest">
-            {saving ? "Creando…" : "Crear redactor"}
+          <Button
+            type="submit"
+            disabled={saving}
+            className="font-mono text-[10px] uppercase tracking-widest"
+          >
+            {saving ? "Creando…" : "Registrar"}
           </Button>
         </form>
       </AdminPanel>
@@ -122,27 +188,76 @@ function UsersAdmin() {
       <div>
         {isLoading ? (
           <p className="font-mono text-xs text-muted-foreground">Cargando…</p>
-        ) : !data?.users.length ? (
+        ) : visible.length === 0 ? (
           <AdminEmptyState
-            title="Aún no hay redactores"
-            description="Crea la primera cuenta de staff con el formulario de arriba."
+            title={users.length ? "Sin coincidencias" : "Aún no hay usuarios"}
+            description={
+              users.length
+                ? "Prueba otra búsqueda."
+                : "Registra la primera cuenta o espera a que alguien se registre."
+            }
           />
         ) : (
           <ul className="divide-y divide-foreground/15 border border-foreground/15">
-            {data.users.map((u) => (
+            {visible.map((u) => (
               <li
                 key={u.id}
                 className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 hover:bg-muted/30"
               >
-                <div>
-                  <p className="font-display text-lg">{u.email}</p>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-display text-lg">{u.display_name || u.email}</p>
+                    {u.isAdmin && (
+                      <span className="border border-foreground px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest">
+                        Admin
+                      </span>
+                    )}
+                    {u.isRedactor && !u.isAdmin && <RedactorBadge className="ml-0" />}
+                    {!u.isAdmin && !u.isRedactor && (
+                      <span className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground">
+                        Usuario
+                      </span>
+                    )}
+                  </div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                    {u.email}
+                    {" · "}
                     Alta {new Date(u.created_at).toLocaleDateString("es-ES")}
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => del(u.id, u.email)}>
-                  Borrar
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  {!u.isAdmin && !u.isRedactor && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busyId === u.id}
+                      onClick={() => promote(u)}
+                      className="border-[#B22234] text-[#B22234] hover:bg-[#B22234] hover:text-white"
+                    >
+                      Ascender a redactor
+                    </Button>
+                  )}
+                  {u.isRedactor && !u.isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busyId === u.id}
+                      onClick={() => demote(u)}
+                    >
+                      Quitar redactor
+                    </Button>
+                  )}
+                  {!u.isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busyId === u.id}
+                      onClick={() => del(u)}
+                    >
+                      Eliminar
+                    </Button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

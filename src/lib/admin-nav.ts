@@ -70,7 +70,7 @@ export function getAdminNavGroups(): AdminNavGroup[] {
       items: [
         {
           id: "users",
-          label: "Redactores",
+          label: "Usuarios",
           href: `${ADMIN_DASHBOARD_PATH}/users`,
           access: "admin",
         },
@@ -136,7 +136,7 @@ export function isAdminNavItemActive(pathname: string, item: AdminNavItem): bool
 export function adminSectionKicker(pathname: string): string {
   if (pathname.startsWith("/admin/newspaper")) return "Revistas · Periódico";
   if (pathname.startsWith("/admin/subscribers")) return "Sitio · Newsletter";
-  if (pathname.startsWith("/admin/users")) return "Equipo · Redactores";
+  if (pathname.startsWith("/admin/users")) return "Equipo · Usuarios";
   if (pathname === "/admin/new") return "Revistas · Nuevo número";
   if (pathname.match(/^\/admin\/[^/]+\/edit/)) return "Revistas · Editar número";
   if (pathname === "/admin" || pathname === "/admin/") return "Revistas · Archivo";

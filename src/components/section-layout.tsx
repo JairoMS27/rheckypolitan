@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { publicUrl } from "@/lib/storage";
 import { SECTIONS, sectionLabel, type SectionKey } from "@/lib/sections";
 import { UserMenu } from "@/components/user-menu";
+import { AuthorByline } from "@/components/redactor-badge";
+import { fetchRedactorIdSet } from "@/lib/redactor-badges";
 
 type Post = {
   id: string;
@@ -17,20 +19,25 @@ type Post = {
   cover_position: string | null;
   published_at: string;
   author: string | null;
+  author_id: string | null;
 };
 
 export function SectionLayout({ section, intro }: { section: SectionKey; intro?: string }) {
   const [posts, setPosts] = useState<Post[] | null>(null);
+  const [redactorIds, setRedactorIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
       const { data } = await supabase
         .from("posts")
-        .select("id,slug,title,excerpt,cover_path,cover_position,published_at,author")
+        .select("id,slug,title,excerpt,cover_path,cover_position,published_at,author,author_id")
         .eq("section", section)
         .eq("published", true)
         .order("published_at", { ascending: false });
-      setPosts(data ?? []);
+      const rows = (data as Post[] | null) ?? [];
+      setPosts(rows);
+      const ids = rows.map((p) => p.author_id).filter(Boolean) as string[];
+      setRedactorIds(await fetchRedactorIdSet(ids));
     })();
   }, [section]);
 
@@ -130,7 +137,10 @@ export function SectionLayout({ section, intro }: { section: SectionKey; intro?:
                           month: "long",
                           year: "numeric",
                         })}
-                        {p.author && <> · {p.author}</>}
+                        <AuthorByline
+                          author={p.author}
+                          isRedactor={Boolean(p.author_id && redactorIds.has(p.author_id))}
+                        />
                       </p>
                       <h2 className="mt-2 font-display text-2xl leading-tight group-hover:text-[#B22234]">
                         {p.title}

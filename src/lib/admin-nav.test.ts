@@ -50,6 +50,10 @@ describe("getAdminNavGroups IA", () => {
     expect(hrefs).toContain("/admin/users");
     expect(hrefs).toContain("/admin/subscribers");
     expect(hrefs).toContain(authorPostsListPath());
+    const usersItem = getAdminNavGroups()
+      .flatMap((g) => g.items)
+      .find((i) => i.id === "users");
+    expect(usersItem?.label).toBe("Usuarios");
   });
 });
 
@@ -77,7 +81,7 @@ describe("adminSectionKicker", () => {
   test("labels sections with brand IA copy", () => {
     expect(adminSectionKicker("/admin")).toContain("Revistas");
     expect(adminSectionKicker("/admin/subscribers")).toContain("Sitio");
-    expect(adminSectionKicker("/admin/users")).toContain("Equipo");
+    expect(adminSectionKicker("/admin/users")).toContain("Usuarios");
     expect(adminSectionKicker("/admin/newspaper")).toContain("Periódico");
   });
 });

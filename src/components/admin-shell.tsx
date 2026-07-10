@@ -180,13 +180,7 @@ export function AdminShell({
         </nav>
       </header>
 
-      <div className="mx-auto max-w-[1400px] px-6 py-2">
-        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
-          Revistas y sitio aquí · artículos de sección en /publicar
-        </p>
-      </div>
-
-      <main className="mx-auto max-w-[1400px] px-6 pb-16 pt-4">{children}</main>
+      <main className="mx-auto max-w-[1400px] px-6 py-10 pb-16">{children}</main>
     </div>
   );
 }

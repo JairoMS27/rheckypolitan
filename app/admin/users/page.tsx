@@ -3,7 +3,7 @@ import { requireAdminPage } from "@/lib/auth";
 import { AdminUsersPage } from "@/views/admin-users";
 
 export const metadata: Metadata = {
-  title: "Admin — Redactores",
+  title: "Admin — Usuarios",
   robots: { index: false },
 };
 
