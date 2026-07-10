@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { HOME_PATH, postLoginDestination } from "@/lib/dashboard-paths";
@@ -13,9 +13,9 @@ import {
   USERNAME_MIN,
   validateUsername,
 } from "@/lib/username";
-import { isUsernameAvailable } from "@/lib/profiles";
 
 type Mode = "login" | "register";
+type UsernameStatus = "idle" | "checking" | "available" | "taken" | "invalid";
 
 export function LoginForm() {
   const router = useRouter();
@@ -29,14 +29,71 @@ export function LoginForm() {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>("idle");
+  const [usernameHint, setUsernameHint] = useState("");
 
   const passwordChecks = useMemo(() => evaluatePassword(password), [password]);
-  const usernameError = username.trim() ? validateUsername(username) : null;
+  const usernameFormatError = username.trim() ? validateUsername(username) : null;
 
   const safeNext = (() => {
     const next = searchParams.get("next");
     return next && next.startsWith("/") && !next.startsWith("//") ? next : null;
   })();
+
+  // Live username availability (debounced)
+  useEffect(() => {
+    if (mode !== "register") return;
+
+    const raw = username.trim();
+    if (!raw) {
+      setUsernameStatus("idle");
+      setUsernameHint("");
+      return;
+    }
+
+    const formatErr = validateUsername(raw);
+    if (formatErr) {
+      setUsernameStatus("invalid");
+      setUsernameHint(formatErr);
+      return;
+    }
+
+    setUsernameStatus("checking");
+    setUsernameHint("Comprobando disponibilidad…");
+
+    const handle = window.setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/auth/username?u=${encodeURIComponent(raw)}`,
+          { cache: "no-store" },
+        );
+        const json = (await res.json().catch(() => ({}))) as {
+          available?: boolean;
+          message?: string;
+          error?: string;
+        };
+        if (!res.ok) {
+          setUsernameStatus("idle");
+          setUsernameHint(json.error ?? "No se pudo comprobar el usuario");
+          return;
+        }
+        if (json.available) {
+          setUsernameStatus("available");
+          setUsernameHint(
+            `Disponible · /u/${normalizeUsername(raw)}`,
+          );
+        } else {
+          setUsernameStatus("taken");
+          setUsernameHint(json.message ?? "Ese nombre de usuario ya está en uso");
+        }
+      } catch {
+        setUsernameStatus("idle");
+        setUsernameHint("No se pudo comprobar el usuario");
+      }
+    }, 400);
+
+    return () => window.clearTimeout(handle);
+  }, [username, mode]);
 
   async function onLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -73,6 +130,12 @@ export function LoginForm() {
       toast.error("Nombre de usuario inválido", { description: unameErr });
       return;
     }
+    if (usernameStatus === "taken") {
+      toast.error("Nombre de usuario no disponible", {
+        description: "Elige otro; ese ya está pillado.",
+      });
+      return;
+    }
     if (!displayName.trim()) {
       toast.error("Indica un nombre visible");
       return;
@@ -84,38 +147,63 @@ export function LoginForm() {
 
     setLoading(true);
     try {
-      const available = await isUsernameAvailable(username);
-      if (!available) {
-        toast.error("Ese nombre de usuario ya está en uso");
-        setLoading(false);
-        return;
-      }
-
-      const uname = normalizeUsername(username);
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            username: uname,
-            display_name: displayName.trim(),
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(safeNext ?? HOME_PATH)}`,
-        },
+      // Final server-side check + create (avoids Supabase public /signup 429 email quota)
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          username: normalizeUsername(username),
+          displayName: displayName.trim(),
+          redirectTo: safeNext ?? "/",
+        }),
       });
 
-      if (error) throw error;
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        field?: string;
+        message?: string;
+        needsConfirmation?: boolean;
+        ok?: boolean;
+      };
 
-      // If email confirmation is off, session exists immediately.
-      if (data.session) {
-        toast.success("Cuenta creada", { description: "¡Bienvenido/a a Rheckypolitan!" });
-        router.replace(safeNext ?? postLoginDestination());
-        router.refresh();
-        return;
+      if (!res.ok) {
+        if (json.field === "username" || res.status === 409) {
+          setUsernameStatus("taken");
+          setUsernameHint(json.error ?? "Ese nombre de usuario ya está en uso");
+        }
+        if (res.status === 429) {
+          toast.error("Demasiados intentos", {
+            description:
+              json.error ??
+              "Espera unos minutos antes de volver a intentar el registro.",
+          });
+          return;
+        }
+        throw new Error(json.error ?? "No se pudo crear la cuenta");
+      }
+
+      if (json.needsConfirmation === false) {
+        // Auto-confirmed projects: sign in immediately
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (!signInError) {
+          toast.success("Cuenta creada", {
+            description: "¡Bienvenido/a a Rheckypolitan!",
+          });
+          router.replace(safeNext ?? postLoginDestination());
+          router.refresh();
+          return;
+        }
       }
 
       toast.success("Revisa tu correo", {
-        description: "Te hemos enviado un enlace para confirmar la cuenta.",
+        description:
+          json.message ??
+          "Te hemos enviado un enlace para confirmar la cuenta.",
       });
       setMode("login");
       setPassword("");
@@ -127,6 +215,24 @@ export function LoginForm() {
       setLoading(false);
     }
   }
+
+  const usernameHintClass =
+    usernameStatus === "available"
+      ? "text-emerald-700 dark:text-emerald-400"
+      : usernameStatus === "taken" || usernameStatus === "invalid"
+        ? "text-[#B22234]"
+        : "text-muted-foreground";
+
+  const canSubmitRegister =
+    !loading &&
+    passwordMeetsAllRules(password) &&
+    !usernameFormatError &&
+    usernameStatus !== "taken" &&
+    usernameStatus !== "invalid" &&
+    usernameStatus !== "checking" &&
+    Boolean(username.trim()) &&
+    Boolean(displayName.trim()) &&
+    Boolean(email.trim());
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -263,14 +369,18 @@ export function LoginForm() {
                 maxLength={USERNAME_MAX}
                 autoFocus
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
+                aria-invalid={
+                  usernameStatus === "taken" || usernameStatus === "invalid"
+                }
                 className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition focus:border-[#B22234]"
                 placeholder="john_bourbon"
               />
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                {usernameError
-                  ? usernameError
-                  : `Tu perfil público: /u/${normalizeUsername(username) || "usuario"}`}
+              <p className={`mt-1.5 text-xs ${usernameHintClass}`} aria-live="polite">
+                {usernameHint ||
+                  (usernameFormatError
+                    ? usernameFormatError
+                    : `Tu perfil público: /u/${normalizeUsername(username) || "usuario"}`)}
               </p>
             </div>
 
@@ -367,7 +477,7 @@ export function LoginForm() {
 
             <button
               type="submit"
-              disabled={loading || !passwordMeetsAllRules(password)}
+              disabled={!canSubmitRegister}
               className="w-full border border-foreground bg-foreground py-3 font-mono text-[11px] font-bold uppercase tracking-widest text-background transition hover:border-[#B22234] hover:bg-[#B22234] disabled:opacity-50"
             >
               {loading ? "Creando cuenta…" : "Crear cuenta"}
