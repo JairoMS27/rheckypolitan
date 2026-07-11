@@ -513,8 +513,8 @@ export function HomePage() {
         {/* Cinematic scroll shelf — pinned scene, magazines arrive on scroll */}
         <section id="archivo" className="scroll-mt-0">
           {issues === null ? (
-            <div className="flex h-svh min-h-[480px] items-center justify-center bg-[#0c0a09]">
-              <div className="h-10 w-48 animate-pulse bg-white/10" />
+            <div className="flex h-svh min-h-[480px] items-center justify-center bg-background">
+              <div className="h-10 w-48 animate-pulse bg-muted" />
             </div>
           ) : issues.length === 0 ? (
             <Empty />
@@ -764,9 +764,9 @@ export function HomePage() {
 
 function Empty() {
   return (
-    <div className="border-y border-foreground/15 bg-[#0c0a09] px-6 py-24 text-center text-[#f3ebe0]">
+    <div className="border-y border-foreground/15 bg-background px-6 py-24 text-center">
       <p className="font-display text-2xl">Aún no hay números publicados.</p>
-      <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-white/40">
+      <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
         El primer número aparecerá aquí pronto.
       </p>
     </div>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { publicUrl } from "@/lib/storage";
-import { spinePaletteForIssue, type ShelfIssueInput } from "@/lib/shelf-layout";
+import type { ShelfIssueInput } from "@/lib/shelf-layout";
 import {
   initialShelfState,
   reduceShelfState,
@@ -27,20 +27,17 @@ type LoadedPages = {
   pages: FlipPage[];
 };
 
+type Pose = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rot: number;
+  z: number;
+};
+
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
-}
-
-function formatSpineDate(iso?: string | null) {
-  if (!iso) return "";
-  try {
-    return new Date(iso).toLocaleDateString("es-ES", {
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return "";
-  }
 }
 
 function prefersReducedMotion() {
@@ -48,27 +45,76 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+/** Uniform Rheckypolitan magazine branding (all issues share the same spine). */
+const MAG = {
+  bg: "#111111",
+  ink: "#ffffff",
+  accent: "#B22234",
+  edge: "#000000",
+  paper: "#f4f0ea",
+} as const;
+
 const STORY = [
   {
     kicker: "★ Colección",
     title: "El estante",
-    line: "El archivo se arma con el scroll.",
+    line: "Todas las revistas, listas en el lomo.",
   },
   {
-    kicker: "★ Crónicas",
-    title: "Desde Kentucky",
-    line: "Cada lomo es un número. Cada número, una mesa.",
+    kicker: "★ La mesa",
+    title: "Se despliegan",
+    line: "Salen del estante y caen en espiral.",
   },
   {
-    kicker: "★ Archivo vivo",
-    title: "Papel digital",
-    line: "Haz clic en un lomo para sacarlo y hojearlo.",
+    kicker: "★ Archivo",
+    title: "Elige un número",
+    line: "Clic en una revista para hojearla.",
   },
 ] as const;
 
+const SPINE_W = 42;
+const SPINE_H = 320;
+const COVER_W = 128;
+const COVER_H = 172;
+const SPINE_GAP = 10;
+
+function shelfPose(i: number, n: number, stageW: number, shelfY: number): Pose {
+  const total = n * SPINE_W + Math.max(0, n - 1) * SPINE_GAP;
+  const start = (stageW - total) / 2;
+  return {
+    x: start + i * (SPINE_W + SPINE_GAP),
+    y: shelfY - SPINE_H,
+    w: SPINE_W,
+    h: SPINE_H,
+    rot: 0,
+    z: i,
+  };
+}
+
+/** Archimedean-ish spiral on the table (flattened for screen). */
+function spiralPose(i: number, n: number, stageW: number, tableCy: number): Pose {
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const angle = i * golden - Math.PI / 2;
+  // Radius grows so the stack reads as a spiral spread
+  const t = n <= 1 ? 0 : i / (n - 1);
+  const radius = 36 + t * Math.min(stageW * 0.34, 220);
+  const cx = stageW / 2;
+  const x = cx + Math.cos(angle) * radius - COVER_W / 2;
+  const y = tableCy + Math.sin(angle) * radius * 0.62 - COVER_H / 2;
+  const rot = ((angle * 180) / Math.PI) * 0.35 + (i % 3) * 4 - 4;
+  return {
+    x,
+    y,
+    w: COVER_W,
+    h: COVER_H,
+    rot,
+    z: 20 + i,
+  };
+}
+
 /**
- * El Estante — scroll-cinematic shelf (pinned + scrub).
- * Magazines arrive progressively as you scroll; click opens FlipReader.
+ * El Estante — white cinematic shelf.
+ * Magazines start on a large shelf; scroll pulls them onto a spiral table layout.
  */
 export function MagazineShelf({ issues }: Props) {
   const [state, dispatch] = useReducer(
@@ -79,21 +125,21 @@ export function MagazineShelf({ issues }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingPages, setLoadingPages] = useState(false);
   const [storyIndex, setStoryIndex] = useState(0);
-  const [canInteract, setCanInteract] = useState(false);
+  const [onTable, setOnTable] = useState(false);
 
   const sectionRef = useRef<HTMLDivElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
-  const shelfRef = useRef<HTMLDivElement>(null);
-  const plankRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const shelfBoardRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
-  const copyRef = useRef<HTMLDivElement>(null);
-  const countRef = useRef<HTMLDivElement>(null);
-  const spineRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const magRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const loadGen = useRef(0);
   const timers = useRef<number[]>([]);
   const storyIndexRef = useRef(0);
 
-  const ordered = useMemo(() => [...issues].sort((a, b) => a.number - b.number), [issues]);
+  // Newest first on the shelf (left → right archive order by number desc)
+  const ordered = useMemo(() => [...issues].sort((a, b) => b.number - a.number), [issues]);
 
   const clearTimers = useCallback(() => {
     timers.current.forEach((id) => window.clearTimeout(id));
@@ -102,7 +148,6 @@ export function MagazineShelf({ issues }: Props) {
 
   useEffect(() => () => clearTimers(), [clearTimers]);
 
-  // Timed phase transitions for open/close (reader flow)
   useEffect(() => {
     clearTimers();
     if (state.phase === "exiting") {
@@ -121,7 +166,6 @@ export function MagazineShelf({ issues }: Props) {
     return clearTimers;
   }, [state.phase, clearTimers]);
 
-  // Load pages for active issue
   useEffect(() => {
     if (!state.activeId || !state.activeNumber) return;
 
@@ -196,58 +240,101 @@ export function MagazineShelf({ issues }: Props) {
   }, [state.phase]);
 
   // ─────────────────────────────────────────────
-  // Cinematic scroll: pin + scrub magazines in
+  // Scroll: shelf → spiral table
   // ─────────────────────────────────────────────
   useEffect(() => {
-    if (!sectionRef.current || !pinRef.current || ordered.length === 0) return;
+    if (!sectionRef.current || !pinRef.current || !stageRef.current || ordered.length === 0) {
+      return;
+    }
 
     let ctx: gsap.Context | undefined;
     let killed = false;
 
     const setupId = requestAnimationFrame(() => {
-      if (killed || !sectionRef.current || !pinRef.current) return;
+      if (killed || !sectionRef.current || !pinRef.current || !stageRef.current) return;
 
+      const stage = stageRef.current;
+      const stageW = stage.clientWidth || 1000;
+      const stageH = stage.clientHeight || 600;
+      const shelfY = stageH * 0.42;
+      const tableCy = stageH * 0.62;
+      const n = ordered.length;
       const reduced = prefersReducedMotion();
-      const spines = ordered
-        .map((i) => spineRefs.current.get(i.id))
-        .filter(Boolean) as HTMLButtonElement[];
 
-      if (spines.length === 0) return;
+      const mags = ordered
+        .map((issue) => {
+          const el = magRefs.current.get(issue.id);
+          return el ? { issue, el } : null;
+        })
+        .filter(Boolean) as { issue: MagazineShelfIssue; el: HTMLButtonElement }[];
 
-      ctx = gsap.context(() => {
-        gsap.set(spines, {
-          y: reduced ? 0 : 140,
-          opacity: reduced ? 1 : 0,
-          rotateZ: (i: number) => (reduced ? 0 : i % 2 === 0 ? -12 : 12),
-          rotateX: reduced ? 0 : 28,
-          scale: reduced ? 1 : 0.82,
-          transformOrigin: "50% 100%",
+      if (mags.length === 0) return;
+
+      // Position shelf board + table surface
+      if (shelfBoardRef.current) {
+        const total = n * SPINE_W + Math.max(0, n - 1) * SPINE_GAP;
+        const boardW = Math.min(stageW - 32, Math.max(total + 80, 320));
+        gsap.set(shelfBoardRef.current, {
+          left: (stageW - boardW) / 2,
+          top: shelfY,
+          width: boardW,
+        });
+      }
+      if (tableRef.current) {
+        const tw = Math.min(stageW * 0.88, 720);
+        const th = Math.min(stageH * 0.42, 340);
+        gsap.set(tableRef.current, {
+          left: (stageW - tw) / 2,
+          top: tableCy - th * 0.35,
+          width: tw,
+          height: th,
+          opacity: reduced ? 0.9 : 0,
+        });
+      }
+
+      // Initial shelf poses
+      mags.forEach(({ el }, i) => {
+        const from = shelfPose(i, n, stageW, shelfY);
+        gsap.set(el, {
+          left: from.x,
+          top: from.y,
+          width: from.w,
+          height: from.h,
+          rotation: from.rot,
+          zIndex: from.z,
+          opacity: 1,
           force3D: true,
         });
+        const spine = el.querySelector<HTMLElement>("[data-face=spine]");
+        const cover = el.querySelector<HTMLElement>("[data-face=cover]");
+        if (spine) gsap.set(spine, { opacity: 1 });
+        if (cover) gsap.set(cover, { opacity: 0 });
+      });
 
-        if (plankRef.current) {
-          gsap.set(plankRef.current, {
-            scaleX: reduced ? 1 : 0.2,
-            opacity: reduced ? 1 : 0.35,
-            transformOrigin: "50% 50%",
-          });
-        }
-        if (copyRef.current) {
-          gsap.set(copyRef.current, { y: reduced ? 0 : 36, opacity: reduced ? 1 : 0 });
-        }
-        if (countRef.current) {
-          gsap.set(countRef.current, {
-            opacity: reduced ? 1 : 0,
-            y: reduced ? 0 : 20,
-          });
-        }
-
+      ctx = gsap.context(() => {
         if (reduced) {
-          setCanInteract(true);
+          mags.forEach(({ el }, i) => {
+            const to = spiralPose(i, n, stageW, tableCy);
+            gsap.set(el, {
+              left: to.x,
+              top: to.y,
+              width: to.w,
+              height: to.h,
+              rotation: to.rot,
+              zIndex: to.z,
+            });
+            const spine = el.querySelector<HTMLElement>("[data-face=spine]");
+            const cover = el.querySelector<HTMLElement>("[data-face=cover]");
+            if (spine) gsap.set(spine, { opacity: 0 });
+            if (cover) gsap.set(cover, { opacity: 1 });
+          });
+          if (tableRef.current) gsap.set(tableRef.current, { opacity: 0.95 });
+          setOnTable(true);
+          setStoryIndex(2);
           return;
         }
 
-        const runway = Math.max(280, 180 + ordered.length * 55);
+        const runway = Math.max(260, 200 + n * 40);
 
         const tl = gsap.timeline({
           defaults: { ease: "none" },
@@ -256,7 +343,7 @@ export function MagazineShelf({ issues }: Props) {
             start: "top top",
             end: `+=${runway}%`,
             pin: pinRef.current,
-            scrub: 0.85,
+            scrub: 0.9,
             anticipatePin: 1,
             invalidateOnRefresh: true,
             onUpdate: (self) => {
@@ -264,61 +351,110 @@ export function MagazineShelf({ issues }: Props) {
               if (progressRef.current) {
                 progressRef.current.style.transform = `scaleX(${p})`;
               }
-              const next = p < 0.33 ? 0 : p < 0.7 ? 1 : 2;
+              const next = p < 0.28 ? 0 : p < 0.68 ? 1 : 2;
               if (next !== storyIndexRef.current) {
                 storyIndexRef.current = next;
                 setStoryIndex(next);
               }
-              const interact = p > 0.28;
-              setCanInteract((prev) => (prev === interact ? prev : interact));
+              setOnTable((prev) => {
+                const nextOn = p > 0.55;
+                return prev === nextOn ? prev : nextOn;
+              });
             },
           },
         });
 
-        tl.to(copyRef.current, { y: 0, opacity: 1, duration: 0.12, ease: "power2.out" }, 0.02);
-        tl.to(countRef.current, { y: 0, opacity: 1, duration: 0.1 }, 0.08);
-        if (plankRef.current) {
-          tl.to(
-            plankRef.current,
-            { scaleX: 1, opacity: 1, duration: 0.18, ease: "power2.out" },
-            0.05,
-          );
+        // Table fades in mid-sequence
+        if (tableRef.current) {
+          tl.to(tableRef.current, { opacity: 0.95, duration: 0.25 }, 0.18);
         }
 
-        const introEnd = 0.14;
-        const settleEnd = 0.88;
-        const span = settleEnd - introEnd;
+        // Each magazine leaves the shelf toward its spiral seat
+        mags.forEach(({ el }, i) => {
+          const from = shelfPose(i, n, stageW, shelfY);
+          const to = spiralPose(i, n, stageW, tableCy);
+          // Stagger departures left→right, then arc through air
+          const start = 0.12 + (i / Math.max(n, 1)) * 0.48;
+          const lift = start + 0.08;
+          const land = start + 0.22;
 
-        spines.forEach((el, i) => {
-          const t = introEnd + (i / Math.max(spines.length, 1)) * span * 0.72;
-          const settle = t + span * 0.18;
+          const spine = el.querySelector<HTMLElement>("[data-face=spine]");
+          const cover = el.querySelector<HTMLElement>("[data-face=cover]");
+
+          // Pull out / lift
           tl.to(
             el,
             {
-              y: 0,
-              opacity: 1,
-              rotateZ: 0,
-              rotateX: 0,
-              scale: 1,
-              duration: 0.14,
-              ease: "power3.out",
+              top: from.y - 48 - (i % 3) * 8,
+              left: from.x + (i - n / 2) * 6,
+              rotation: i % 2 === 0 ? -8 : 8,
+              zIndex: 40 + i,
+              duration: 0.08,
+              ease: "power1.out",
             },
-            t,
+            start,
           );
-          tl.to(el, { y: -6, duration: 0.04, ease: "power1.out" }, settle);
-          tl.to(el, { y: 0, duration: 0.05, ease: "power2.inOut" }, settle + 0.04);
+
+          // Morph to cover + spiral land
+          tl.to(
+            el,
+            {
+              left: to.x,
+              top: to.y,
+              width: to.w,
+              height: to.h,
+              rotation: to.rot,
+              zIndex: to.z,
+              duration: 0.2,
+              ease: "power2.inOut",
+            },
+            lift,
+          );
+
+          if (spine) {
+            tl.to(spine, { opacity: 0, duration: 0.1 }, lift + 0.04);
+          }
+          if (cover) {
+            tl.to(cover, { opacity: 1, duration: 0.1 }, lift + 0.05);
+          }
+
+          // Soft settle
+          tl.to(
+            el,
+            {
+              top: to.y + 4,
+              duration: 0.04,
+              ease: "power1.in",
+            },
+            land,
+          );
+          tl.to(
+            el,
+            {
+              top: to.y,
+              duration: 0.05,
+              ease: "power2.out",
+            },
+            land + 0.04,
+          );
         });
 
-        tl.to(shelfRef.current, { rotateX: 2, z: 20, duration: 0.2, ease: "none" }, 0.75);
-        tl.to(shelfRef.current, { rotateX: 0, z: 0, duration: 0.15, ease: "none" }, 0.92);
+        // Shelf board recedes slightly once magazines leave
+        if (shelfBoardRef.current) {
+          tl.to(shelfBoardRef.current, { opacity: 0.35, y: -12, duration: 0.2 }, 0.55);
+        }
       }, sectionRef);
 
       ScrollTrigger.refresh();
     });
 
+    const onResize = () => ScrollTrigger.refresh();
+    window.addEventListener("resize", onResize);
+
     return () => {
       killed = true;
       cancelAnimationFrame(setupId);
+      window.removeEventListener("resize", onResize);
       ctx?.revert();
     };
   }, [ordered]);
@@ -335,9 +471,9 @@ export function MagazineShelf({ issues }: Props) {
     dispatch({ type: "DISMISS" });
   }, []);
 
-  const setSpineRef = useCallback((id: string, node: HTMLButtonElement | null) => {
-    if (node) spineRefs.current.set(id, node);
-    else spineRefs.current.delete(id);
+  const setMagRef = useCallback((id: string, node: HTMLButtonElement | null) => {
+    if (node) magRefs.current.set(id, node);
+    else magRefs.current.delete(id);
   }, []);
 
   const isBusy = state.phase !== "idle";
@@ -351,248 +487,261 @@ export function MagazineShelf({ issues }: Props) {
   return (
     <div
       ref={sectionRef}
-      className="relative w-full"
+      className="relative w-full bg-background"
       data-shelf-root
       data-shelf-phase={state.phase}
-      data-shelf-cinematic="true"
+      data-shelf-cinematic="spiral"
     >
       <div
         ref={pinRef}
-        className="relative flex h-svh min-h-[560px] w-full flex-col overflow-hidden bg-[#0c0a09] text-[#f3ebe0]"
+        className="relative flex h-svh min-h-[620px] w-full flex-col overflow-hidden bg-background text-foreground"
       >
+        {/* Subtle paper grain on white */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.07]"
+          className="pointer-events-none absolute inset-0 opacity-[0.035]"
           aria-hidden
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-            backgroundSize: "180px 180px",
-          }}
-        />
-        <div
-          className="pointer-events-none absolute inset-0"
-          aria-hidden
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 55% at 50% 42%, rgba(90,60,40,0.28), transparent 70%), linear-gradient(180deg, #14110f 0%, #0c0a09 55%, #080706 100%)",
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+            backgroundSize: "200px 200px",
           }}
         />
 
-        <div className="relative z-20 flex items-start justify-between gap-4 px-5 pt-8 md:px-10 md:pt-10">
-          <div ref={copyRef} className="min-w-0 max-w-2xl">
-            <p
-              key={`k-${storyIndex}`}
-              className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#B22234]"
-            >
+        {/* Header copy */}
+        <div className="relative z-20 flex items-start justify-between gap-4 px-5 pt-8 md:px-12 md:pt-12">
+          <div className="min-w-0 max-w-2xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#B22234]">
               {story.kicker}
             </p>
-            <h2
-              key={`t-${storyIndex}`}
-              className="mt-2 font-display text-[clamp(2.75rem,8vw,5.5rem)] font-semibold leading-[0.92] tracking-tight text-[#f7f0e6]"
-            >
+            <h2 className="mt-2 font-display text-[clamp(2.75rem,8vw,5.75rem)] font-semibold leading-[0.92] tracking-tight">
               {story.title}
             </h2>
-            <p
-              key={`l-${storyIndex}`}
-              className="mt-4 max-w-md font-display text-lg italic leading-snug text-[#f3ebe0]/65 md:text-xl"
-            >
+            <p className="mt-3 max-w-md font-display text-lg italic leading-snug text-muted-foreground md:text-xl">
               {story.line}
             </p>
           </div>
-          <div ref={countRef} className="shrink-0 text-right">
-            <p className="font-display text-5xl tabular-nums leading-none text-white/15 md:text-6xl">
+          <div className="shrink-0 text-right">
+            <p className="font-display text-5xl tabular-nums leading-none text-foreground/10 md:text-6xl">
               {String(ordered.length).padStart(2, "0")}
             </p>
-            <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">
-              en archivo
+            <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
+              revistas
             </p>
           </div>
         </div>
 
-        <div
-          className="relative z-10 flex flex-1 flex-col justify-end px-4 pb-16 sm:px-8 md:px-12 md:pb-20"
-          style={{ perspective: "1400px", perspectiveOrigin: "50% 60%" }}
-        >
+        {/* Stage: shelf + table + magazines (absolute) */}
+        <div ref={stageRef} className="relative z-10 min-h-0 flex-1 w-full">
+          {/* Table surface (mesa) */}
           <div
-            ref={shelfRef}
-            className="relative mx-auto w-full max-w-[1100px]"
-            style={{ transformStyle: "preserve-3d" }}
+            ref={tableRef}
+            className="pointer-events-none absolute rounded-sm"
+            style={{
+              background: "linear-gradient(180deg, #ebe4d8 0%, #e0d6c6 40%, #d2c6b2 100%)",
+              boxShadow: "0 24px 48px rgba(40,30,15,0.12), inset 0 1px 0 rgba(255,255,255,0.55)",
+              transform: "perspective(900px) rotateX(58deg)",
+              transformOrigin: "50% 50%",
+            }}
+            aria-hidden
           >
             <div
-              className="flex items-end justify-center gap-[3px] overflow-x-auto px-1 pb-1 pt-10 sm:gap-1.5 sm:overflow-visible md:gap-2"
+              className="absolute inset-0 opacity-30"
               style={{
-                transformStyle: "preserve-3d",
-                minHeight: 220,
-                scrollbarWidth: "none",
+                backgroundImage:
+                  "repeating-linear-gradient(90deg, transparent, transparent 14px, rgba(90,60,30,0.04) 14px, rgba(90,60,30,0.04) 15px)",
               }}
-            >
-              {ordered.map((issue, i) => {
-                const palette = spinePaletteForIssue(issue.number);
-                const isActive = state.activeId === issue.id;
-                const hidden =
-                  isActive &&
-                  (state.phase === "exiting" ||
-                    state.phase === "opening" ||
-                    state.phase === "reading" ||
-                    state.phase === "closing");
-                const dateLabel = formatSpineDate(issue.published_at);
-                const num = String(issue.number).padStart(2, "0");
-                const h = 168 + ((i * 17) % 36);
+            />
+          </div>
 
-                return (
-                  <button
-                    key={issue.id}
-                    type="button"
-                    ref={(node) => setSpineRef(issue.id, node)}
-                    data-spine
-                    data-shelf-issue={issue.number}
-                    disabled={isBusy || !canInteract}
-                    aria-label={`Abrir N.º ${issue.number}: ${issue.title}`}
-                    className={[
-                      "group relative shrink-0 outline-none will-change-transform",
-                      "focus-visible:ring-2 focus-visible:ring-[#B22234] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0c0a09]",
-                      "disabled:cursor-default",
-                      hidden ? "pointer-events-none !opacity-0" : "",
-                    ].join(" ")}
-                    style={{
-                      width: 20,
-                      height: h,
-                      transformStyle: "preserve-3d",
-                      filter: "drop-shadow(0 14px 18px rgba(0,0,0,0.45))",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (isBusy || !canInteract || prefersReducedMotion()) return;
-                      gsap.to(e.currentTarget, {
-                        y: -14,
-                        z: 36,
-                        rotateY: -6,
-                        scale: 1.04,
-                        duration: 0.4,
-                        ease: "power2.out",
-                        overwrite: "auto",
-                      });
-                    }}
-                    onMouseLeave={(e) => {
-                      if (isBusy) return;
-                      gsap.to(e.currentTarget, {
-                        y: 0,
-                        z: 0,
-                        rotateY: 0,
-                        scale: 1,
-                        duration: 0.5,
-                        ease: "power3.out",
-                        overwrite: "auto",
-                      });
-                    }}
-                    onClick={() => selectIssue(issue)}
+          {/* Shelf board */}
+          <div
+            ref={shelfBoardRef}
+            className="pointer-events-none absolute h-4 sm:h-5"
+            style={{
+              background: "linear-gradient(180deg, #d9cbb6 0%, #c4b49a 45%, #a89478 100%)",
+              boxShadow: "0 12px 28px rgba(60,40,20,0.16), inset 0 1px 0 rgba(255,255,255,0.6)",
+              transform: "perspective(800px) rotateX(12deg)",
+              transformOrigin: "50% 0%",
+            }}
+            aria-hidden
+          >
+            <div className="absolute inset-x-0 top-0 h-px bg-white/70" />
+            <div
+              className="absolute -bottom-2 inset-x-[3%] h-2"
+              style={{
+                background: "linear-gradient(180deg, rgba(60,40,20,0.18), transparent)",
+                filter: "blur(2px)",
+              }}
+            />
+          </div>
+
+          {/* Magazines */}
+          {ordered.map((issue) => {
+            const isActive = state.activeId === issue.id;
+            const hidden =
+              isActive &&
+              (state.phase === "exiting" ||
+                state.phase === "opening" ||
+                state.phase === "reading" ||
+                state.phase === "closing");
+            const num = String(issue.number).padStart(2, "0");
+            const cover = issue.cover_path ? publicUrl(issue.cover_path) : null;
+
+            return (
+              <button
+                key={issue.id}
+                type="button"
+                ref={(node) => setMagRef(issue.id, node)}
+                data-mag
+                data-shelf-issue={issue.number}
+                disabled={isBusy}
+                aria-label={`Abrir N.º ${issue.number}: ${issue.title}`}
+                className={[
+                  "absolute overflow-hidden outline-none will-change-[left,top,width,height,transform]",
+                  "focus-visible:ring-2 focus-visible:ring-[#B22234] focus-visible:ring-offset-2",
+                  "disabled:cursor-default",
+                  "hover:brightness-105",
+                  hidden ? "pointer-events-none !opacity-0" : "",
+                ].join(" ")}
+                style={{
+                  left: 0,
+                  top: 0,
+                  width: SPINE_W,
+                  height: SPINE_H,
+                  boxShadow: onTable
+                    ? "0 16px 32px rgba(0,0,0,0.18)"
+                    : "0 10px 22px rgba(0,0,0,0.22)",
+                }}
+                onClick={() => selectIssue(issue)}
+              >
+                {/* Spine face — magazine lomo, same brand for all */}
+                <span
+                  data-face="spine"
+                  className="absolute inset-0 flex flex-col"
+                  style={{
+                    background: `linear-gradient(90deg, ${MAG.edge} 0%, ${MAG.bg} 14%, #1a1a1a 50%, ${MAG.bg} 86%, ${MAG.edge} 100%)`,
+                  }}
+                >
+                  {/* Top issue band */}
+                  <span
+                    className="flex h-10 shrink-0 items-center justify-center"
+                    style={{ background: MAG.accent }}
                   >
                     <span
-                      className="absolute inset-0 overflow-hidden"
+                      className="font-mono text-[11px] font-bold tabular-nums text-white"
                       style={{
-                        background: `linear-gradient(90deg, ${palette.edge} 0%, ${palette.bg} 18%, ${palette.bg} 82%, ${palette.edge} 100%)`,
-                        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+                        writingMode: "vertical-rl",
+                        transform: "rotate(180deg)",
                       }}
                     >
-                      <span
-                        className="pointer-events-none absolute inset-y-0 left-0 w-[38%]"
-                        style={{
-                          background: "linear-gradient(90deg, rgba(255,255,255,0.14), transparent)",
-                        }}
-                      />
-                      <span
-                        className="absolute inset-x-0 top-0 h-1.5"
-                        style={{ background: palette.accent }}
-                      />
-                      <span
-                        className="absolute inset-0 flex flex-col items-center justify-between py-2.5"
-                        style={{ color: palette.ink }}
-                      >
-                        <span
-                          className="font-mono text-[6px] font-bold uppercase tracking-[0.16em] opacity-80"
-                          style={{
-                            writingMode: "vertical-rl",
-                            transform: "rotate(180deg)",
-                          }}
-                        >
-                          RHECKYPOLITAN
-                        </span>
-                        <span
-                          className="max-h-[40%] overflow-hidden font-display text-[9px] leading-none"
-                          style={{
-                            writingMode: "vertical-rl",
-                            transform: "rotate(180deg)",
-                          }}
-                          title={issue.title}
-                        >
-                          {issue.title}
-                        </span>
-                        <span className="flex flex-col items-center gap-0.5">
-                          <span
-                            className="font-mono text-[8px] font-bold tabular-nums"
-                            style={{ color: palette.accent }}
-                          >
-                            {num}
-                          </span>
-                          {dateLabel ? (
-                            <span
-                              className="font-mono text-[5px] uppercase tracking-wider opacity-60"
-                              style={{
-                                writingMode: "vertical-rl",
-                                transform: "rotate(180deg)",
-                              }}
-                            >
-                              {dateLabel}
-                            </span>
-                          ) : null}
-                        </span>
-                      </span>
-                      <span
-                        className="absolute inset-x-0 bottom-0 h-[16%]"
-                        style={{
-                          background: `linear-gradient(180deg, transparent, ${palette.accent}bb)`,
-                        }}
-                      />
+                      {num}
+                    </span>
+                  </span>
+
+                  {/* Brand + title stack */}
+                  <span className="flex min-h-0 flex-1 flex-col items-center justify-between px-0.5 py-3">
+                    <span
+                      className="font-mono text-[8px] font-bold uppercase tracking-[0.2em] text-white/90"
+                      style={{
+                        writingMode: "vertical-rl",
+                        transform: "rotate(180deg)",
+                        letterSpacing: "0.18em",
+                      }}
+                    >
+                      RHECKYPOLITAN
                     </span>
                     <span
-                      className="pointer-events-none absolute top-[5%] -right-[2px] bottom-[5%] w-[2px]"
-                      aria-hidden
+                      className="max-h-[48%] overflow-hidden font-display text-[11px] leading-none text-white/85"
                       style={{
-                        background: "linear-gradient(180deg, #f5efe4, #e0d4c0 45%, #cfc0a8)",
+                        writingMode: "vertical-rl",
+                        transform: "rotate(180deg)",
                       }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
+                      title={issue.title}
+                    >
+                      {issue.title}
+                    </span>
+                    <span
+                      className="font-mono text-[7px] uppercase tracking-widest text-white/45"
+                      style={{
+                        writingMode: "vertical-rl",
+                        transform: "rotate(180deg)",
+                      }}
+                    >
+                      REVISTA
+                    </span>
+                  </span>
 
-            <div
-              ref={plankRef}
-              className="relative mx-auto mt-0 h-3 w-full sm:h-3.5"
-              style={{
-                transformStyle: "preserve-3d",
-                transform: "rotateX(14deg)",
-                background: "linear-gradient(180deg, #8a7360 0%, #5c4a3c 42%, #3a2e26 100%)",
-                boxShadow: "0 18px 36px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.14)",
-              }}
-            >
-              <div className="absolute inset-x-0 top-0 h-px bg-white/20" />
-              <div
-                className="absolute -bottom-3 inset-x-[4%] h-3"
-                style={{
-                  background: "linear-gradient(180deg, rgba(0,0,0,0.5), transparent)",
-                  filter: "blur(3px)",
-                }}
-              />
-            </div>
-          </div>
+                  {/* Bottom red strip */}
+                  <span className="h-3 shrink-0" style={{ background: MAG.accent }} />
+
+                  {/* Gloss */}
+                  <span
+                    className="pointer-events-none absolute inset-y-0 left-0 w-1/3"
+                    style={{
+                      background: "linear-gradient(90deg, rgba(255,255,255,0.12), transparent)",
+                    }}
+                  />
+                  {/* Thin paper edge (magazine pages) */}
+                  <span
+                    className="pointer-events-none absolute top-[8%] -right-[3px] bottom-[8%] w-[3px]"
+                    style={{
+                      background: `linear-gradient(180deg, ${MAG.paper}, #e8e0d4 50%, #d4c9b8)`,
+                      boxShadow: "1px 0 2px rgba(0,0,0,0.15)",
+                    }}
+                  />
+                </span>
+
+                {/* Cover face — shown on the table */}
+                <span
+                  data-face="cover"
+                  className="absolute inset-0 flex flex-col bg-foreground opacity-0"
+                >
+                  {cover ? (
+                    <img
+                      src={cover}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      draggable={false}
+                    />
+                  ) : (
+                    <span className="flex h-full flex-col justify-between bg-[#111] p-3 text-left">
+                      <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[#B22234]">
+                        Rheckypolitan
+                      </span>
+                      <span>
+                        <span className="font-display text-3xl text-white">{num}</span>
+                        <span className="mt-1 block font-display text-sm leading-tight text-white/80">
+                          {issue.title}
+                        </span>
+                      </span>
+                    </span>
+                  )}
+                  <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 pt-8">
+                    <span className="font-mono text-[9px] font-bold tabular-nums text-white">
+                      N.º {num}
+                    </span>
+                  </span>
+                  <span
+                    className="pointer-events-none absolute inset-y-0 left-0 w-1/4"
+                    style={{
+                      background: "linear-gradient(90deg, rgba(255,255,255,0.14), transparent)",
+                    }}
+                  />
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="relative z-20 px-5 pb-6 md:px-10">
+        {/* Progress */}
+        <div className="relative z-20 px-5 pb-6 md:px-12">
           <div className="mx-auto flex max-w-[1100px] items-center gap-4">
-            <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-white/30">
+            <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-muted-foreground">
               {state.phase === "idle"
-                ? "Scroll · las revistas llegan · clic para abrir"
+                ? onTable
+                  ? "Sobre la mesa · clic para abrir"
+                  : "Scroll · las revistas salen del estante"
                 : state.phase === "exiting"
-                  ? "Sacando del estante…"
+                  ? "Sacando…"
                   : state.phase === "opening"
                     ? "Abriendo…"
                     : state.phase === "reading"
@@ -601,7 +750,7 @@ export function MagazineShelf({ issues }: Props) {
                         : "Leyendo · Esc cierra"
                       : "Devolviendo…"}
             </p>
-            <div className="relative h-px flex-1 overflow-hidden bg-white/10">
+            <div className="relative h-px flex-1 overflow-hidden bg-foreground/10">
               <div
                 ref={progressRef}
                 className="absolute inset-y-0 left-0 w-full origin-left bg-[#B22234]"
@@ -609,7 +758,7 @@ export function MagazineShelf({ issues }: Props) {
               />
             </div>
           </div>
-          {loadError && <p className="mt-2 text-center text-sm text-[#ff8a8a]">{loadError}</p>}
+          {loadError && <p className="mt-2 text-center text-sm text-[#B22234]">{loadError}</p>}
         </div>
       </div>
 
@@ -621,11 +770,11 @@ export function MagazineShelf({ issues }: Props) {
         >
           <div
             className={[
-              "overflow-hidden border border-[#B22234]/40 bg-[#12100e] shadow-2xl transition-all",
+              "overflow-hidden border border-[#B22234]/40 bg-foreground shadow-2xl transition-all",
               state.phase === "exiting"
-                ? "h-48 w-36 scale-100 opacity-100 duration-500"
+                ? "h-56 w-40 scale-100 opacity-100 duration-500"
                 : state.phase === "opening"
-                  ? "h-72 w-52 scale-110 opacity-0 duration-500"
+                  ? "h-80 w-56 scale-110 opacity-0 duration-500"
                   : "h-40 w-28 scale-75 opacity-0 duration-500",
             ].join(" ")}
             style={{ transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)" }}
@@ -638,13 +787,11 @@ export function MagazineShelf({ issues }: Props) {
                 draggable={false}
               />
             ) : (
-              <div className="flex h-full flex-col items-center justify-center px-2 text-center">
+              <div className="flex h-full flex-col items-center justify-center px-2 text-center text-background">
                 <span className="font-mono text-[9px] uppercase tracking-widest text-[#B22234]">
                   N.º {String(activeIssue.number).padStart(2, "0")}
                 </span>
-                <span className="mt-1 font-display text-sm text-[#f3ebe0]">
-                  {activeIssue.title}
-                </span>
+                <span className="mt-1 font-display text-sm">{activeIssue.title}</span>
               </div>
             )}
           </div>
@@ -653,7 +800,7 @@ export function MagazineShelf({ issues }: Props) {
 
       {(state.phase === "exiting" || state.phase === "opening" || state.phase === "closing") && (
         <div
-          className="pointer-events-none fixed inset-0 z-[70] bg-black/55 backdrop-blur-[2px]"
+          className="pointer-events-none fixed inset-0 z-[70] bg-black/40 backdrop-blur-[2px]"
           aria-hidden
           data-shelf-backdrop
         />
