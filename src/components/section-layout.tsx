@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { publicUrl } from "@/lib/storage";
 import { SECTIONS, sectionLabel, type SectionKey } from "@/lib/sections";
 import { UserMenu } from "@/components/user-menu";
+import { SiteFooter } from "@/components/site-footer";
 import { AuthorByline } from "@/components/redactor-badge";
 import { fetchRedactorIdSet } from "@/lib/redactor-badges";
 import { fetchProfileSnippets, type ProfileSnippet } from "@/lib/profiles";
@@ -172,13 +173,7 @@ export function SectionLayout({ section, intro }: { section: SectionKey; intro?:
         </div>
       </main>
 
-      <footer className="border-t border-foreground">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-center gap-3 px-6 py-6 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-          <span>★</span>
-          <span>© {new Date().getFullYear()} Rheckypolitan</span>
-          <span>★</span>
-        </div>
-      </footer>
+      <SiteFooter wide />
     </div>
   );
 }

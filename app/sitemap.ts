@@ -15,6 +15,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 1,
     },
+    {
+      url: `${BASE_URL}/terminos`,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${BASE_URL}/privacidad`,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
   ];
 
   const issueEntries: MetadataRoute.Sitemap = (issues ?? []).flatMap((i) => {

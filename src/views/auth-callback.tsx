@@ -25,10 +25,13 @@ function AuthCallbackContent() {
       const tokenHash = searchParams.get("token_hash");
       const type = searchParams.get("type") as EmailOtpType | null;
       const code = searchParams.get("code");
-      const next = safeRedirect(searchParams.get("redirect") ?? searchParams.get("next"));
+      const rawNext = searchParams.get("redirect") ?? searchParams.get("next");
+      // Password recovery → force update-password screen unless an explicit next is set
+      const next =
+        type === "recovery" && !rawNext ? "/login?mode=update-password" : safeRedirect(rawNext);
 
       try {
-        // Preferred path: email links point to /auth/callback?token_hash=…&type=signup
+        // Preferred path: email links point to /auth/callback?token_hash=…&type=signup|recovery
         if (tokenHash && type) {
           const { error: otpError } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
@@ -37,13 +40,13 @@ function AuthCallbackContent() {
           if (otpError) throw otpError;
           if (!cancelled) {
             setStatus("success");
-            router.replace(next);
+            router.replace(type === "recovery" ? "/login?mode=update-password" : next);
             router.refresh();
           }
           return;
         }
 
-        // OAuth / PKCE code exchange
+        // OAuth / PKCE code exchange (also used by some recovery links)
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
           if (exchangeError) throw exchangeError;
@@ -98,8 +101,7 @@ function AuthCallbackContent() {
         );
       } catch (err) {
         if (cancelled) return;
-        const message =
-          err instanceof Error ? err.message : "Error al confirmar el correo";
+        const message = err instanceof Error ? err.message : "Error al confirmar el correo";
         setError(message);
         setStatus("error");
       }
@@ -134,8 +136,7 @@ function AuthCallbackContent() {
         <div
           className="h-2 w-full max-w-md"
           style={{
-            backgroundImage:
-              "repeating-linear-gradient(to right, #B22234 0 8px, #ffffff 8px 16px)",
+            backgroundImage: "repeating-linear-gradient(to right, #B22234 0 8px, #ffffff 8px 16px)",
           }}
           aria-hidden
         />

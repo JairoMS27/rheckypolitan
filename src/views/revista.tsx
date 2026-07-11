@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { IssueCover } from "@/components/issue-cover";
+import { SiteFooter } from "@/components/site-footer";
 import { UserMenu } from "@/components/user-menu";
 import { publicUrl } from "@/lib/storage";
 
@@ -67,8 +68,7 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
   }, [number]);
 
   const { prev, next } = useMemo(() => {
-    if (!allIssues || !issue)
-      return { prev: null as Issue | null, next: null as Issue | null };
+    if (!allIssues || !issue) return { prev: null as Issue | null, next: null as Issue | null };
     const sorted = [...allIssues].sort((a, b) => a.number - b.number);
     const idx = sorted.findIndex((i) => i.number === issue.number);
     return {
@@ -90,9 +90,7 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
   if (issue === null) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center text-foreground">
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
-          ★ Archivo
-        </p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">★ Archivo</p>
         <p className="mt-3 font-display text-4xl">Número no encontrado</p>
         <Link
           href="/"
@@ -115,8 +113,7 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
       <div
         className="h-1.5 w-full"
         style={{
-          backgroundImage:
-            "repeating-linear-gradient(to right, #B22234 0 10px, #ffffff 10px 20px)",
+          backgroundImage: "repeating-linear-gradient(to right, #B22234 0 10px, #ffffff 10px 20px)",
         }}
         aria-hidden
       />
@@ -130,10 +127,7 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
           >
             ← Archivo
           </Link>
-          <Link
-            href="/"
-            className="font-display text-xl font-semibold tracking-tight md:text-2xl"
-          >
+          <Link href="/" className="font-display text-xl font-semibold tracking-tight md:text-2xl">
             Rheckypolitan
           </Link>
           <div className="flex items-center gap-4">
@@ -167,9 +161,7 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
                   />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-foreground">
-                    <span className="font-display text-[10rem] text-background/15">
-                      {numFmt}
-                    </span>
+                    <span className="font-display text-[10rem] text-background/15">{numFmt}</span>
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-80" />
@@ -377,9 +369,7 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
                       <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                         {c.rol}
                       </span>
-                      <p className="mt-1 font-display text-lg leading-tight">
-                        {c.nombres}
-                      </p>
+                      <p className="mt-1 font-display text-lg leading-tight">{c.nombres}</p>
                     </li>
                   ))}
                 </ul>
@@ -417,9 +407,7 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
                   <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
                     ★ También en el archivo
                   </p>
-                  <h2 className="mt-2 font-display text-3xl md:text-4xl">
-                    Otros números
-                  </h2>
+                  <h2 className="mt-2 font-display text-3xl md:text-4xl">Otros números</h2>
                 </div>
                 <Link
                   href="/#archivo"
@@ -434,14 +422,8 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
                   .slice(0, 5)
                   .map((i) => (
                     <li key={i.id}>
-                      <Link
-                        href={`/revista/${i.number}`}
-                        className="group block"
-                      >
-                        <IssueCover
-                          number={i.number}
-                          coverPath={i.cover_path}
-                        />
+                      <Link href={`/revista/${i.number}`} className="group block">
+                        <IssueCover number={i.number} coverPath={i.cover_path} />
                         <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-[#B22234]">
                           N.º {String(i.number).padStart(2, "0")}
                         </p>
@@ -457,25 +439,7 @@ export function RevistaPage({ number, meta }: { number: string; meta?: IssueMeta
         )}
       </main>
 
-      <footer className="border-t border-foreground">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-5 py-6 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground md:px-8">
-          <span>© {new Date().getFullYear()} Rheckypolitan</span>
-          <span className="flex items-center gap-2">
-            <span>★</span>
-            <span>N.º {numFmt}</span>
-            <span>★</span>
-          </span>
-        </div>
-      </footer>
-
-      <div
-        className="h-1.5 w-full"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(to right, #B22234 0 10px, #ffffff 10px 20px)",
-        }}
-        aria-hidden
-      />
+      <SiteFooter />
     </div>
   );
 }

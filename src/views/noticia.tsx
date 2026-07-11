@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { publicUrl } from "@/lib/storage";
 import { SECTIONS, sectionLabel } from "@/lib/sections";
 import { UserMenu } from "@/components/user-menu";
+import { SiteFooter } from "@/components/site-footer";
 import { CommentsSection } from "@/components/comments-section";
 import { AuthorByline } from "@/components/redactor-badge";
 import { UserAvatar } from "@/components/user-avatar";
@@ -200,13 +201,7 @@ export function NoticiaPage({ section, slug }: { section: string; slug: string }
         </div>
       </main>
 
-      <footer className="border-t border-foreground">
-        <div className="mx-auto flex max-w-[1600px] items-center justify-center gap-3 px-6 py-6 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-          <span>★</span>
-          <span>© {new Date().getFullYear()} Rheckypolitan</span>
-          <span>★</span>
-        </div>
-      </footer>
+      <SiteFooter wide />
     </div>
   );
 }
