@@ -1,16 +1,6 @@
-import type { Metadata } from "next";
-import { PasatiemposPage } from "@/views/pasatiempos";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Pasatiempos",
-  description: "Pasatiempos, juegos y crucigramas de Rheckypolitan.",
-  alternates: { canonical: "https://rheckypolitan.es/pasatiempos" },
-  openGraph: {
-    title: "Pasatiempos — Rheckypolitan",
-    description: "Pasatiempos, juegos y crucigramas de Rheckypolitan.",
-  },
-};
-
+/** Pasatiempos section retired — keep URL from 404ing. */
 export default function Page() {
-  return <PasatiemposPage />;
+  redirect("/");
 }

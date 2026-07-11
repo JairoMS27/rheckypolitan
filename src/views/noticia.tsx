@@ -6,8 +6,8 @@ import { notFound } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { publicUrl } from "@/lib/storage";
-import { SECTIONS, sectionLabel } from "@/lib/sections";
-import { UserMenu } from "@/components/user-menu";
+import { sectionLabel } from "@/lib/sections";
+import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CommentsSection } from "@/components/comments-section";
 import { AuthorByline } from "@/components/redactor-badge";
@@ -78,51 +78,16 @@ export function NoticiaPage({ section, slug }: { section: string; slug: string }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div
-        className="h-2 w-full"
-        style={{
-          backgroundImage: "repeating-linear-gradient(to bottom, #B22234 0 2px, #ffffff 2px 4px)",
-        }}
-        aria-hidden
-      />
-      <header className="border-b border-foreground">
-        <div className="mx-auto grid max-w-[1600px] grid-cols-3 items-center px-6 py-5">
-          <Link
-            href={`/${section}`}
-            className="justify-self-start font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground hover:text-[#B22234]"
-          >
-            ← {label}
-          </Link>
-          <Link
-            href="/"
-            className="justify-self-center font-display text-2xl font-semibold tracking-tight md:text-3xl"
-          >
-            Rheckypolitan
-          </Link>
-          <div className="justify-self-end">
-            <UserMenu />
-          </div>
-        </div>
-        <nav className="border-t border-foreground/10">
-          <ul className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-center gap-6 px-6 py-3 md:gap-10">
-            {SECTIONS.map((s) => (
-              <li key={s.key}>
-                <Link
-                  href={s.path}
-                  className={`font-mono text-[10px] uppercase tracking-widest hover:text-[#B22234] ${
-                    s.key === section ? "text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  {s.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </header>
+      <SiteHeader activePath={`/${section}`} compact />
 
-      <main className="mx-auto max-w-[760px] px-6 py-16 md:py-24">
-        <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
+      <main className="mx-auto max-w-[760px] px-5 py-12 md:px-8 md:py-16">
+        <Link
+          href={`/${section}`}
+          className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground transition hover:text-[#B22234]"
+        >
+          ← {label}
+        </Link>
+        <span className="mt-6 block font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
           ★ {label}
         </span>
         <h1 className="mt-3 font-display text-[clamp(2rem,5vw,4rem)] font-normal leading-[1] tracking-tight">

@@ -38,7 +38,6 @@ const NAV = [
   { href: "/conspiracion", label: "Conspiración" },
   { href: "/gastronomia", label: "Gastronomía" },
   { href: "/entrevistas", label: "Entrevistas" },
-  { href: "/pasatiempos", label: "Pasatiempos" },
 ] as const;
 
 const COLUMNISTAS = [
@@ -68,7 +67,6 @@ const SECTION_LABELS: Record<string, string> = {
   conspiracion: "Conspiración",
   gastronomia: "Gastronomía",
   entrevistas: "Entrevistas",
-  pasatiempos: "Pasatiempos",
 };
 
 function formatDate(d: string) {

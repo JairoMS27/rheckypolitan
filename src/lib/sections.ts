@@ -4,13 +4,21 @@ export const SECTIONS = [
   { key: "conspiracion", label: "Conspiración", path: "/conspiracion" },
   { key: "gastronomia", label: "Gastronomía", path: "/gastronomia" },
   { key: "entrevistas", label: "Entrevistas", path: "/entrevistas" },
-  { key: "pasatiempos", label: "Pasatiempos", path: "/pasatiempos" },
 ] as const;
 
 export type SectionKey = (typeof SECTIONS)[number]["key"];
 
+/** Legacy / archived section keys still present in DB posts. */
+const LEGACY_SECTION_LABELS: Record<string, string> = {
+  pasatiempos: "Pasatiempos",
+};
+
 export function sectionLabel(key: string): string {
-  return SECTIONS.find((s) => s.key === key)?.label ?? key;
+  return SECTIONS.find((s) => s.key === key)?.label ?? LEGACY_SECTION_LABELS[key] ?? key;
+}
+
+export function isActiveSectionKey(key: string): key is SectionKey {
+  return SECTIONS.some((s) => s.key === key);
 }
 
 export function slugify(input: string): string {

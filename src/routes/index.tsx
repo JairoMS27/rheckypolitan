@@ -198,7 +198,6 @@ function Index() {
             <li><Link to="/conspiracion" className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-[#B22234]">Conspiración</Link></li>
             <li><Link to="/gastronomia" className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-[#B22234]">Gastronomía</Link></li>
             <li><Link to="/entrevistas" className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-[#B22234]">Entrevistas</Link></li>
-            <li><Link to="/pasatiempos" className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-[#B22234]">Pasatiempos</Link></li>
           </ul>
         </nav>
       </header>

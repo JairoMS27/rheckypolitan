@@ -16,7 +16,6 @@ const SECTION_VALUES = [
   "conspiracion",
   "gastronomia",
   "entrevistas",
-  "pasatiempos",
 ] as const;
 
 const PostBodySchema = z.object({

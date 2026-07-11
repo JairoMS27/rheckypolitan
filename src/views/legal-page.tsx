@@ -1,21 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { UserMenu } from "@/components/user-menu";
 
 type Props = {
   kind: "terminos" | "privacidad";
 };
-
-const NAV = [
-  { href: "/actualidad", label: "Actualidad" },
-  { href: "/entretenimiento", label: "Entretenimiento" },
-  { href: "/conspiracion", label: "Conspiración" },
-  { href: "/gastronomia", label: "Gastronomía" },
-  { href: "/entrevistas", label: "Entrevistas" },
-  { href: "/pasatiempos", label: "Pasatiempos" },
-] as const;
 
 export function LegalPage({ kind }: Props) {
   const isTerms = kind === "terminos";
@@ -25,39 +16,7 @@ export function LegalPage({ kind }: Props) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div
-        className="h-1.5 w-full"
-        style={{
-          backgroundImage: "repeating-linear-gradient(to right, #B22234 0 10px, #ffffff 10px 20px)",
-        }}
-        aria-hidden
-      />
-
-      <header className="border-b border-foreground">
-        <div className="mx-auto flex max-w-[900px] items-center justify-between gap-3 px-5 py-3 md:px-8">
-          <Link
-            href="/"
-            className="font-display text-xl font-semibold tracking-tight hover:text-[#B22234]"
-          >
-            Rheckypolitan
-          </Link>
-          <UserMenu />
-        </div>
-        <nav aria-label="Secciones" className="overflow-x-auto border-t border-foreground/10">
-          <ul className="mx-auto flex min-w-max max-w-[900px] items-center gap-1 px-4 py-2 md:px-8">
-            {NAV.map((s) => (
-              <li key={s.href}>
-                <Link
-                  href={s.href}
-                  className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-[#B22234] hover:text-white"
-                >
-                  {s.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </header>
+      <SiteHeader compact />
 
       <main className="mx-auto max-w-[900px] px-5 py-12 md:px-8 md:py-16">
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">{kicker}</p>
@@ -66,7 +25,7 @@ export function LegalPage({ kind }: Props) {
           Última actualización · {updated}
         </p>
 
-        <div className="prose-rhecky mt-10 space-y-8 text-sm leading-relaxed text-foreground/85 md:text-base">
+        <div className="mt-10 space-y-8 text-sm leading-relaxed text-foreground/85 md:text-base">
           {isTerms ? <TermsBody /> : <PrivacyBody />}
         </div>
 
@@ -170,8 +129,8 @@ function PrivacyBody() {
             funcionamiento del sitio.
           </li>
           <li>
-            <strong>Analítica (solo si aceptas):</strong> identificador de visitante de primera
-            parte y rutas visitadas, guardados en tu dispositivo.
+            <strong>Analítica (solo si aceptas):</strong> identificador de visitante y rutas
+            visitadas, guardados en base de datos para el panel de administración.
           </li>
         </ul>
       </section>
@@ -193,12 +152,13 @@ function PrivacyBody() {
             mantenimiento. Sin ellas la web no funciona bien.
           </li>
           <li>
-            <strong>Analítica:</strong> cookie/localStorage de visitante y recuento de páginas en
-            este navegador. No vendemos perfiles a redes publicitarias.
+            <strong>Analítica:</strong> cookie de visitante y recuento de páginas. Si das
+            consentimiento, las visitas se guardan en nuestra base de datos para el panel admin. No
+            vendemos perfiles a redes publicitarias.
           </li>
           <li>
             <strong>Marketing:</strong> categoría reservada; hoy no cargamos píxeles de terceros
-            salvo que lo actives en el futuro y lo indiquemos aquí.
+            salvo que lo actives y lo indiquemos aquí.
           </li>
         </ul>
         <p className="mt-3">
@@ -211,7 +171,7 @@ function PrivacyBody() {
         <p className="mt-3">
           Los datos de cuenta se conservan mientras la cuenta exista. Los de newsletter hasta que te
           desuscribas. El consentimiento de cookies se guarda hasta unos 13 meses o hasta que lo
-          cambies. Los hits de analítica locales se rotan en el propio dispositivo.
+          cambies.
         </p>
       </section>
       <section>
