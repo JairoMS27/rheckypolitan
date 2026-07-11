@@ -47,7 +47,7 @@ export function UserAvatar({
         <img
           src={avatarUrl}
           alt={displayName}
-          className="h-full w-full object-cover"
+          className="media-outline h-full w-full object-cover"
         />
       ) : (
         initialsFrom(displayName || "?")
@@ -60,7 +60,7 @@ export function UserAvatar({
   return (
     <Link
       href={href}
-      className="shrink-0 transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B22234]"
+      className="shrink-0 transition-opacity duration-150 ease-out hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#B22234] active:scale-[0.96]"
       title={`Ver perfil de ${displayName}`}
     >
       {shell}

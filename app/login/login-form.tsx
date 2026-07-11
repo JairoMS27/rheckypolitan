@@ -352,7 +352,7 @@ export function LoginForm() {
               role="tab"
               aria-selected={mode === "login"}
               onClick={() => setMode("login")}
-              className={`py-2.5 font-mono text-[10px] uppercase tracking-widest transition ${
+              className={`min-h-10 py-2.5 font-mono text-[10px] uppercase tracking-widest transition-[background-color,color] duration-150 ease-out ${
                 mode === "login"
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground"
@@ -365,7 +365,7 @@ export function LoginForm() {
               role="tab"
               aria-selected={mode === "register"}
               onClick={() => setMode("register")}
-              className={`py-2.5 font-mono text-[10px] uppercase tracking-widest transition ${
+              className={`min-h-10 py-2.5 font-mono text-[10px] uppercase tracking-widest transition-[background-color,color] duration-150 ease-out ${
                 mode === "register"
                   ? "bg-foreground text-background"
                   : "text-muted-foreground hover:text-foreground"
@@ -394,7 +394,7 @@ export function LoginForm() {
                 autoFocus
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition focus:border-[#B22234]"
+                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition-[border-color] duration-150 ease-out focus:border-[#B22234]"
                 placeholder="tunombre@correo.com"
               />
             </div>
@@ -424,7 +424,7 @@ export function LoginForm() {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition focus:border-[#B22234]"
+                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition-[border-color] duration-150 ease-out focus:border-[#B22234]"
                 placeholder="Tu contraseña"
               />
             </div>
@@ -432,7 +432,7 @@ export function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full border border-foreground bg-foreground py-3 font-mono text-[11px] font-bold uppercase tracking-widest text-background transition hover:border-[#B22234] hover:bg-[#B22234] disabled:opacity-50"
+              className="pressable w-full border border-foreground bg-foreground py-3 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:border-[#B22234] hover:bg-[#B22234] disabled:opacity-50"
             >
               {loading ? "Comprobando…" : "Entrar"}
             </button>
@@ -455,14 +455,14 @@ export function LoginForm() {
                 autoFocus
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition focus:border-[#B22234]"
+                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition-[border-color] duration-150 ease-out focus:border-[#B22234]"
                 placeholder="tunombre@correo.com"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full border border-foreground bg-foreground py-3 font-mono text-[11px] font-bold uppercase tracking-widest text-background transition hover:border-[#B22234] hover:bg-[#B22234] disabled:opacity-50"
+              className="pressable w-full border border-foreground bg-foreground py-3 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:border-[#B22234] hover:bg-[#B22234] disabled:opacity-50"
             >
               {loading ? "Enviando…" : "Enviar enlace"}
             </button>
@@ -492,7 +492,7 @@ export function LoginForm() {
                 autoFocus
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition focus:border-[#B22234]"
+                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition-[border-color] duration-150 ease-out focus:border-[#B22234]"
                 placeholder="Elige una contraseña segura"
               />
               <ul className="mt-3 space-y-1.5" aria-live="polite">
@@ -539,14 +539,14 @@ export function LoginForm() {
                 required
                 value={password2}
                 onChange={(e) => setPassword2(e.target.value)}
-                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition focus:border-[#B22234]"
+                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition-[border-color] duration-150 ease-out focus:border-[#B22234]"
                 placeholder="Otra vez"
               />
             </div>
             <button
               type="submit"
               disabled={loading || !passwordMeetsAllRules(password) || password !== password2}
-              className="w-full border border-foreground bg-foreground py-3 font-mono text-[11px] font-bold uppercase tracking-widest text-background transition hover:border-[#B22234] hover:bg-[#B22234] disabled:opacity-50"
+              className="pressable w-full border border-foreground bg-foreground py-3 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:border-[#B22234] hover:bg-[#B22234] disabled:opacity-50"
             >
               {loading ? "Guardando…" : "Guardar contraseña"}
             </button>
@@ -572,7 +572,7 @@ export function LoginForm() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
                 aria-invalid={usernameStatus === "taken" || usernameStatus === "invalid"}
-                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition focus:border-[#B22234]"
+                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition-[border-color] duration-150 ease-out focus:border-[#B22234]"
                 placeholder="john_bourbon"
               />
               <p className={`mt-1.5 text-xs ${usernameHintClass}`} aria-live="polite">
@@ -598,7 +598,7 @@ export function LoginForm() {
                 required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition focus:border-[#B22234]"
+                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition-[border-color] duration-150 ease-out focus:border-[#B22234]"
                 placeholder="John Bourbon"
               />
               <p className="mt-1.5 text-xs text-muted-foreground">
@@ -621,7 +621,7 @@ export function LoginForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition focus:border-[#B22234]"
+                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition-[border-color] duration-150 ease-out focus:border-[#B22234]"
                 placeholder="tunombre@correo.com"
               />
             </div>
@@ -641,7 +641,7 @@ export function LoginForm() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition focus:border-[#B22234]"
+                className="mt-2 w-full border-b border-foreground/30 bg-transparent py-3 font-display text-lg outline-none transition-[border-color] duration-150 ease-out focus:border-[#B22234]"
                 placeholder="Elige una contraseña segura"
               />
               <ul className="mt-3 space-y-1.5" aria-live="polite">
@@ -677,7 +677,7 @@ export function LoginForm() {
             <button
               type="submit"
               disabled={!canSubmitRegister}
-              className="w-full border border-foreground bg-foreground py-3 font-mono text-[11px] font-bold uppercase tracking-widest text-background transition hover:border-[#B22234] hover:bg-[#B22234] disabled:opacity-50"
+              className="pressable w-full border border-foreground bg-foreground py-3 font-mono text-[11px] font-bold uppercase tracking-widest text-background hover:border-[#B22234] hover:bg-[#B22234] disabled:opacity-50"
             >
               {loading ? "Creando cuenta…" : "Crear cuenta"}
             </button>

@@ -124,7 +124,7 @@ function Composer({
             <button
               type="button"
               onClick={() => setShowEmoji((v) => !v)}
-              className={`inline-flex h-8 w-8 items-center justify-center rounded transition ${
+              className={`relative inline-flex h-10 w-10 items-center justify-center rounded transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.96] ${
                 showEmoji
                   ? "bg-muted text-[#B22234]"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -154,7 +154,7 @@ function Composer({
             <button
               type="submit"
               disabled={!text.trim() || submitting}
-              className="border border-foreground bg-foreground px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-background transition hover:border-[#B22234] hover:bg-[#B22234] disabled:opacity-40"
+              className="pressable border border-foreground bg-foreground px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:border-[#B22234] hover:bg-[#B22234] disabled:opacity-40"
             >
               {submitting ? "…" : "Publicar"}
             </button>

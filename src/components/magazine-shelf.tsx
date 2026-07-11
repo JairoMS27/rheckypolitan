@@ -926,12 +926,12 @@ export function MagazineShelf({ issues }: Props) {
         >
           <div
             className={[
-              "overflow-hidden border border-[#B22234]/40 bg-foreground shadow-2xl transition-all",
+              "overflow-hidden border border-[#B22234]/40 bg-foreground shadow-2xl transition-[width,height,transform,opacity] duration-500",
               state.phase === "exiting"
-                ? "h-56 w-40 scale-100 opacity-100 duration-500"
+                ? "h-56 w-40 scale-100 opacity-100"
                 : state.phase === "opening"
-                  ? "h-80 w-56 scale-110 opacity-0 duration-500"
-                  : "h-40 w-28 scale-75 opacity-0 duration-500",
+                  ? "h-80 w-56 scale-110 opacity-0"
+                  : "h-40 w-28 scale-75 opacity-0",
             ].join(" ")}
             style={{ transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)" }}
           >
@@ -939,7 +939,7 @@ export function MagazineShelf({ issues }: Props) {
               <img
                 src={publicUrl(activeIssue.cover_path)}
                 alt=""
-                className="h-full w-full object-cover"
+                className="media-outline h-full w-full object-cover"
                 draggable={false}
               />
             ) : (

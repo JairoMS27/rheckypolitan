@@ -97,7 +97,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           <AlertDialogFooter className="gap-2 border-t border-foreground/10 px-6 py-4 sm:space-x-2">
             <AlertDialogCancel
               onClick={() => finish(false)}
-              className="rounded-none border-foreground/20 bg-transparent font-mono text-[10px] uppercase tracking-widest"
+              className="rounded-none border-foreground/20 bg-transparent font-mono text-[10px] uppercase tracking-widest active:scale-[0.96]"
             >
               {options.cancelLabel ?? "Cancelar"}
             </AlertDialogCancel>
@@ -105,8 +105,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               onClick={() => finish(true)}
               className={
                 tone === "danger"
-                  ? "rounded-none border border-[#B22234] bg-[#B22234] font-mono text-[10px] uppercase tracking-widest text-white hover:bg-[#8B1A29] hover:border-[#8B1A29]"
-                  : "rounded-none border border-foreground bg-foreground font-mono text-[10px] uppercase tracking-widest text-background hover:border-[#B22234] hover:bg-[#B22234]"
+                  ? "rounded-none border border-[#B22234] bg-[#B22234] font-mono text-[10px] uppercase tracking-widest text-white hover:border-[#8B1A29] hover:bg-[#8B1A29] active:scale-[0.96]"
+                  : "rounded-none border border-foreground bg-foreground font-mono text-[10px] uppercase tracking-widest text-background hover:border-[#B22234] hover:bg-[#B22234] active:scale-[0.96]"
               }
             >
               {options.confirmLabel ?? "Confirmar"}

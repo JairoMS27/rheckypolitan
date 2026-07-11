@@ -224,7 +224,7 @@ export function HomePage() {
           <div className="flex items-center gap-4">
             <Link
               href="/feed"
-              className="hidden font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:text-[#B22234] md:inline"
+              className="hidden min-h-10 items-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors duration-150 ease-out hover:text-[#B22234] md:inline-flex"
             >
               Mi feed
             </Link>
@@ -260,7 +260,7 @@ export function HomePage() {
                 )}
                 <Link
                   href={s.href}
-                  className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:bg-[#B22234] hover:text-white md:px-4"
+                  className="inline-flex min-h-10 items-center px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-[background-color,color] duration-150 ease-out hover:bg-[#B22234] hover:text-white md:px-4"
                 >
                   {s.label}
                 </Link>
@@ -290,7 +290,7 @@ export function HomePage() {
                       fill
                       priority
                       sizes="(max-width: 1024px) 100vw, 66vw"
-                      className="object-cover transition duration-700 group-hover:scale-[1.03]"
+                      className="media-outline object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-foreground">
@@ -317,7 +317,7 @@ export function HomePage() {
                       Hojea el número como una revista de papel: portada, lomo y páginas al ritmo
                       del bourbon.
                     </p>
-                    <span className="mt-6 inline-flex items-center gap-2 border border-white/40 bg-white/10 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest text-white backdrop-blur-sm transition group-hover:border-white group-hover:bg-white group-hover:text-foreground">
+                    <span className="mt-6 inline-flex items-center gap-2 border border-white/40 bg-white/10 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest text-white backdrop-blur-sm transition-[background-color,border-color,color] duration-150 ease-out group-hover:border-white group-hover:bg-white group-hover:text-foreground">
                       Leer el número →
                     </span>
                   </div>
@@ -352,13 +352,13 @@ export function HomePage() {
                 <div className="mt-6 flex flex-wrap gap-2">
                   <Link
                     href="#archivo"
-                    className="border border-foreground bg-foreground px-4 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest text-background transition hover:border-[#B22234] hover:bg-[#B22234]"
+                    className="pressable border border-foreground bg-foreground px-4 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:border-[#B22234] hover:bg-[#B22234]"
                   >
                     Ver archivo
                   </Link>
                   <Link
                     href="/publicar"
-                    className="border border-foreground/25 px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest transition hover:border-foreground"
+                    className="pressable border border-foreground/25 px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest hover:border-foreground"
                   >
                     Publicar
                   </Link>
@@ -384,7 +384,7 @@ export function HomePage() {
                     alt="Rhecky"
                     width={44}
                     height={44}
-                    className="h-11 w-11 object-cover grayscale"
+                    className="media-outline h-11 w-11 object-cover grayscale"
                   />
                   <div>
                     <p className="font-mono text-[11px] uppercase tracking-widest">Rhecky</p>
@@ -460,7 +460,7 @@ export function HomePage() {
                   <Link
                     key={post.id}
                     href={`/noticia/${post.section}/${post.slug}`}
-                    className="group flex flex-col border-b border-foreground/15 transition hover:bg-muted/40 md:border-r md:odd:border-r lg:[&:nth-child(3n)]:border-r-0 last:border-b-0"
+                    className="group flex flex-col border-b border-foreground/15 transition-colors duration-150 ease-out hover:bg-muted/40 md:border-r md:odd:border-r lg:[&:nth-child(3n)]:border-r-0 last:border-b-0"
                   >
                     <div className="relative aspect-[16/10] overflow-hidden bg-muted">
                       {post.cover_path ? (
@@ -469,7 +469,7 @@ export function HomePage() {
                           alt=""
                           fill
                           sizes="(max-width: 768px) 100vw, 33vw"
-                          className="object-cover transition duration-500 group-hover:scale-[1.04]"
+                          className="media-outline object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                           style={{
                             objectPosition: post.cover_position ?? "50% 50%",
                           }}
@@ -488,7 +488,7 @@ export function HomePage() {
                           {formatDay(post.published_at)}
                         </span>
                       </p>
-                      <h3 className="mt-2 font-display text-xl leading-tight transition group-hover:text-[#B22234] md:text-2xl">
+                      <h3 className="mt-2 font-display text-xl leading-tight transition-colors duration-150 ease-out group-hover:text-[#B22234] md:text-2xl">
                         {post.title}
                       </h3>
                       {post.excerpt && (
@@ -609,7 +609,7 @@ export function HomePage() {
                         <li key={i.id}>
                           <Link
                             href={`/revista/${i.number}`}
-                            className="group inline-flex max-w-full items-center gap-2 border border-foreground/15 bg-background px-3 py-2 transition hover:border-[#B22234] hover:bg-[#B22234] hover:text-white"
+                            className="pressable group inline-flex max-w-full items-center gap-2 border border-foreground/15 bg-background px-3 py-2 hover:border-[#B22234] hover:bg-[#B22234] hover:text-white"
                           >
                             <span className="font-mono text-[11px] font-bold uppercase tracking-widest">
                               {String(i.number).padStart(2, "0")}
@@ -667,7 +667,7 @@ export function HomePage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="border border-background bg-background px-7 py-3.5 font-mono text-[11px] font-bold uppercase tracking-widest text-foreground transition hover:border-[#ff8a8a] hover:bg-[#ff8a8a] disabled:opacity-60"
+                  className="pressable border border-background bg-background px-7 py-3.5 font-mono text-[11px] font-bold uppercase tracking-widest text-foreground hover:border-[#ff8a8a] hover:bg-[#ff8a8a] disabled:opacity-60"
                 >
                   {submitting ? "Enviando…" : "Suscribirme →"}
                 </button>

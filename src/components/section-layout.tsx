@@ -133,7 +133,7 @@ export function SectionLayout({ section, intro }: { section: SectionKey; intro?:
                         fill
                         priority
                         sizes="(max-width: 1024px) 100vw, 58vw"
-                        className="object-cover transition duration-700 group-hover:scale-[1.03]"
+                        className="media-outline object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                         style={{
                           objectPosition: lead.cover_position ?? "50% 50%",
                         }}
@@ -176,7 +176,7 @@ export function SectionLayout({ section, intro }: { section: SectionKey; intro?:
                     </div>
                     <Link
                       href={`/noticia/${section}/${lead.slug}`}
-                      className="mt-8 inline-flex w-fit items-center border border-foreground bg-foreground px-4 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest text-background transition hover:border-[#B22234] hover:bg-[#B22234]"
+                      className="pressable mt-8 inline-flex w-fit items-center border border-foreground bg-foreground px-4 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:border-[#B22234] hover:bg-[#B22234]"
                     >
                       Leer la pieza →
                     </Link>
@@ -206,7 +206,7 @@ export function SectionLayout({ section, intro }: { section: SectionKey; intro?:
                         <Link
                           key={p.id}
                           href={`/noticia/${section}/${p.slug}`}
-                          className="group flex flex-col border-b border-foreground/15 transition hover:bg-muted/40 md:border-r last:border-b-0 lg:[&:nth-child(3n)]:border-r-0"
+                          className="group flex flex-col border-b border-foreground/15 transition-colors duration-150 ease-out hover:bg-muted/40 md:border-r last:border-b-0 lg:[&:nth-child(3n)]:border-r-0"
                         >
                           <div className="relative aspect-[16/10] overflow-hidden bg-muted">
                             {p.cover_path ? (
@@ -215,7 +215,7 @@ export function SectionLayout({ section, intro }: { section: SectionKey; intro?:
                                 alt=""
                                 fill
                                 sizes="(max-width: 768px) 100vw, 33vw"
-                                className="object-cover transition duration-500 group-hover:scale-[1.04]"
+                                className="media-outline object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                                 style={{
                                   objectPosition: p.cover_position ?? "50% 50%",
                                 }}
@@ -234,7 +234,7 @@ export function SectionLayout({ section, intro }: { section: SectionKey; intro?:
                                 {formatDay(p.published_at)}
                               </span>
                             </p>
-                            <h3 className="mt-2 font-display text-xl leading-tight transition group-hover:text-[#B22234] md:text-2xl">
+                            <h3 className="mt-2 font-display text-xl leading-tight transition-colors duration-150 ease-out group-hover:text-[#B22234] md:text-2xl">
                               {p.title}
                             </h3>
                             {p.excerpt && (

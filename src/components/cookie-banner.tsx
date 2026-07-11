@@ -24,6 +24,7 @@ export function CookieBanner() {
   const [panel, setPanel] = useState(false);
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
     const existing = readConsentFromStorage();
@@ -52,6 +53,16 @@ export function CookieBanner() {
       window.removeEventListener(OPEN_COOKIE_SETTINGS_EVENT, onOpenSettings);
     };
   }, []);
+
+  // Staggered enter when banner opens
+  useEffect(() => {
+    if (!ready || !open) {
+      setEntered(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(id);
+  }, [ready, open]);
 
   // Track App Router navigations when consent allows
   useEffect(() => {
@@ -104,6 +115,17 @@ export function CookieBanner() {
 
   if (!ready || !open) return null;
 
+  const stagger = (delayMs: number) =>
+    ({
+      transitionProperty: "opacity, transform, filter",
+      transitionDuration: "400ms",
+      transitionTimingFunction: "cubic-bezier(0.2, 0, 0, 1)",
+      transitionDelay: entered ? `${delayMs}ms` : "0ms",
+      opacity: entered ? 1 : 0,
+      transform: entered ? "translateY(0)" : "translateY(12px)",
+      filter: entered ? "blur(0px)" : "blur(4px)",
+    }) as const;
+
   return (
     <div
       className="fixed inset-x-0 bottom-0 z-[100] p-3 sm:p-5"
@@ -112,7 +134,13 @@ export function CookieBanner() {
       aria-labelledby="cookie-banner-title"
       aria-describedby="cookie-banner-desc"
     >
-      <div className="mx-auto max-w-3xl border border-foreground bg-background shadow-[0_-8px_40px_rgba(0,0,0,0.12)]">
+      <div
+        className="mx-auto max-w-3xl border border-foreground bg-background shadow-[0_-8px_40px_rgba(0,0,0,0.12)] transition-[opacity,transform] duration-300 ease-out"
+        style={{
+          opacity: entered ? 1 : 0,
+          transform: entered ? "translateY(0)" : "translateY(16px)",
+        }}
+      >
         <div
           className="h-1 w-full"
           style={{
@@ -122,23 +150,28 @@ export function CookieBanner() {
         />
 
         <div className="px-5 py-5 sm:px-7 sm:py-6">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]" style={stagger(0)}>
             ★ Privacidad
           </p>
           <h2
             id="cookie-banner-title"
             className="mt-2 font-display text-2xl leading-tight sm:text-3xl"
+            style={stagger(80)}
           >
             {panel ? "Preferencias de cookies" : "Usamos cookies (y sentido común)"}
           </h2>
-          <p id="cookie-banner-desc" className="mt-3 text-sm leading-relaxed text-foreground/75">
+          <p
+            id="cookie-banner-desc"
+            className="mt-3 text-sm leading-relaxed text-foreground/75"
+            style={stagger(160)}
+          >
             {panel
               ? "Elige qué categorías permites. Las esenciales no se pueden desactivar: mantienen la sesión y la seguridad del sitio."
               : "Necesitamos cookies esenciales para que la web funcione (sesión, preferencias, seguridad). Si aceptas, también medimos visitas de forma anónima y de primera parte — sin vender tus datos a terceros."}
           </p>
 
           {panel && (
-            <ul className="mt-5 space-y-3 border border-foreground/10 p-4">
+            <ul className="mt-5 space-y-3 border border-foreground/10 p-4" style={stagger(200)}>
               <li className="flex items-start justify-between gap-4">
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-widest">Esenciales</p>
@@ -158,7 +191,7 @@ export function CookieBanner() {
                     a saber qué se lee.
                   </p>
                 </div>
-                <label className="flex cursor-pointer items-center gap-2">
+                <label className="relative flex min-h-10 min-w-10 cursor-pointer items-center justify-center gap-2">
                   <span className="sr-only">Activar analítica</span>
                   <input
                     type="checkbox"
@@ -176,7 +209,7 @@ export function CookieBanner() {
                     terceros.
                   </p>
                 </div>
-                <label className="flex cursor-pointer items-center gap-2">
+                <label className="relative flex min-h-10 min-w-10 cursor-pointer items-center justify-center gap-2">
                   <span className="sr-only">Activar marketing</span>
                   <input
                     type="checkbox"
@@ -189,39 +222,48 @@ export function CookieBanner() {
             </ul>
           )}
 
-          <p className="mt-4 text-xs text-muted-foreground">
+          <p className="mt-4 text-xs text-muted-foreground" style={stagger(220)}>
             Más detalle en{" "}
-            <Link href="/privacidad" className="underline underline-offset-2 hover:text-[#B22234]">
+            <Link
+              href="/privacidad"
+              className="underline underline-offset-2 transition-colors duration-150 ease-out hover:text-[#B22234]"
+            >
               Privacidad
             </Link>{" "}
             y{" "}
-            <Link href="/terminos" className="underline underline-offset-2 hover:text-[#B22234]">
+            <Link
+              href="/terminos"
+              className="underline underline-offset-2 transition-colors duration-150 ease-out hover:text-[#B22234]"
+            >
               Términos
             </Link>
             .
           </p>
 
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div
+            className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
+            style={stagger(280)}
+          >
             {panel ? (
               <>
                 <button
                   type="button"
                   onClick={saveCustom}
-                  className="border border-foreground bg-foreground px-4 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest text-background transition hover:border-[#B22234] hover:bg-[#B22234]"
+                  className="pressable border border-foreground bg-foreground px-4 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:border-[#B22234] hover:bg-[#B22234]"
                 >
                   Guardar preferencias
                 </button>
                 <button
                   type="button"
                   onClick={acceptAll}
-                  className="border border-foreground/25 px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest transition hover:border-foreground"
+                  className="pressable border border-foreground/25 px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest hover:border-foreground"
                 >
                   Aceptar todo
                 </button>
                 <button
                   type="button"
                   onClick={() => setPanel(false)}
-                  className="px-2 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                  className="min-h-10 px-2 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors duration-150 ease-out hover:text-foreground"
                 >
                   Atrás
                 </button>
@@ -231,21 +273,21 @@ export function CookieBanner() {
                 <button
                   type="button"
                   onClick={acceptAll}
-                  className="border border-foreground bg-foreground px-4 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest text-background transition hover:border-[#B22234] hover:bg-[#B22234]"
+                  className="pressable border border-foreground bg-foreground px-4 py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest text-background hover:border-[#B22234] hover:bg-[#B22234]"
                 >
                   Aceptar todo
                 </button>
                 <button
                   type="button"
                   onClick={essentialsOnly}
-                  className="border border-foreground/25 px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest transition hover:border-foreground"
+                  className="pressable border border-foreground/25 px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest hover:border-foreground"
                 >
                   Solo esenciales
                 </button>
                 <button
                   type="button"
                   onClick={() => setPanel(true)}
-                  className="px-2 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  className="min-h-10 px-2 py-2.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground underline-offset-2 transition-colors duration-150 ease-out hover:text-foreground hover:underline"
                 >
                   Configurar
                 </button>

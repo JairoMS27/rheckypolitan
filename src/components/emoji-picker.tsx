@@ -243,7 +243,7 @@ export function EmojiPicker({ open, onClose, onPick, className }: Props) {
             onClick={() => {
               onPick(emoji);
             }}
-            className="flex h-9 w-full items-center justify-center rounded text-xl leading-none transition hover:bg-muted active:scale-95"
+            className="flex h-10 w-full items-center justify-center rounded text-xl leading-none transition-[background-color,transform] duration-150 ease-out hover:bg-muted active:scale-[0.96]"
             title={emoji}
           >
             {emoji}

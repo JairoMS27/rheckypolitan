@@ -34,7 +34,7 @@ export function IssueCover({ number, coverPath, className = "" }: Props) {
               src={publicUrl(coverPath)}
               alt={`Portada N.º ${number}`}
               loading="lazy"
-              className="h-full w-full object-cover"
+              className="media-outline h-full w-full object-cover"
               draggable={false}
             />
           ) : (

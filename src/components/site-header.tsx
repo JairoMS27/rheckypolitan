@@ -45,7 +45,7 @@ export function SiteHeader({ activePath, compact = false }: Props) {
           <div className="flex items-center gap-4">
             <Link
               href="/feed"
-              className="hidden font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition hover:text-[#B22234] md:inline"
+              className="hidden min-h-10 items-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors duration-150 ease-out hover:text-[#B22234] md:inline-flex"
             >
               Mi feed
             </Link>
@@ -64,7 +64,7 @@ export function SiteHeader({ activePath, compact = false }: Props) {
             </p>
             <Link
               href="/"
-              className={`mt-2 inline-block font-display font-semibold leading-none tracking-tight ${
+              className={`mt-2 inline-block font-display font-semibold leading-none tracking-tight transition-opacity duration-150 ease-out hover:opacity-80 ${
                 compact ? "text-[clamp(2rem,7vw,3.5rem)]" : "text-[clamp(2.75rem,10vw,5.5rem)]"
               }`}
             >
@@ -91,7 +91,7 @@ export function SiteHeader({ activePath, compact = false }: Props) {
                   )}
                   <Link
                     href={s.path}
-                    className={`px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition md:px-4 ${
+                    className={`inline-flex min-h-10 items-center px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-[background-color,color] duration-150 ease-out md:px-4 ${
                       active
                         ? "bg-[#B22234] text-white"
                         : "text-muted-foreground hover:bg-[#B22234] hover:text-white"

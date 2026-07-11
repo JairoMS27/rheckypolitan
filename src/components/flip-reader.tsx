@@ -123,7 +123,7 @@ export function FlipReader({ title, number, pages, onClose, className = "" }: Pr
         <button
           type="button"
           onClick={onClose}
-          className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-white/60 transition hover:text-white"
+          className="flex min-h-10 items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-white/60 transition-colors duration-150 ease-out hover:text-white active:scale-[0.96]"
         >
           <X className="h-4 w-4" />
           Cerrar
@@ -137,7 +137,7 @@ export function FlipReader({ title, number, pages, onClose, className = "" }: Pr
         <button
           type="button"
           onClick={toggleFullscreen}
-          className="text-white/60 transition hover:text-white"
+          className="relative flex min-h-10 min-w-10 items-center justify-center text-white/60 transition-colors duration-150 ease-out hover:text-white active:scale-[0.96]"
           aria-label="Pantalla completa"
         >
           {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -214,7 +214,7 @@ export function FlipReader({ title, number, pages, onClose, className = "" }: Pr
                 e.stopPropagation();
                 bookRef.current?.pageFlip()?.flipPrev();
               }}
-              className="absolute left-2 top-1/2 z-30 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white/80 backdrop-blur transition hover:text-white active:bg-black/70 disabled:opacity-30"
+              className="absolute left-2 top-1/2 z-30 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white/80 backdrop-blur transition-[color,background-color,transform] duration-150 ease-out hover:text-white active:scale-[0.96] active:bg-black/70 disabled:opacity-30"
               aria-label="Página anterior"
               disabled={safeIndex <= 0}
             >
@@ -227,7 +227,7 @@ export function FlipReader({ title, number, pages, onClose, className = "" }: Pr
                 e.stopPropagation();
                 bookRef.current?.pageFlip()?.flipNext();
               }}
-              className="absolute right-2 top-1/2 z-30 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white/80 backdrop-blur transition hover:text-white active:bg-black/70 disabled:opacity-30"
+              className="absolute right-2 top-1/2 z-30 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white/80 backdrop-blur transition-[color,background-color,transform] duration-150 ease-out hover:text-white active:scale-[0.96] active:bg-black/70 disabled:opacity-30"
               aria-label="Página siguiente"
               disabled={safeIndex >= totalPages - 1}
             >

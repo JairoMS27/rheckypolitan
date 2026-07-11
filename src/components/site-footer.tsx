@@ -37,7 +37,7 @@ export function SiteFooter({ wide = false, className = "" }: Props) {
                   <li key={s.path}>
                     <Link
                       href={s.path}
-                      className="font-mono text-[11px] uppercase tracking-widest text-foreground/70 hover:text-[#B22234]"
+                      className="inline-flex min-h-10 items-center font-mono text-[11px] uppercase tracking-widest text-foreground/70 transition-colors duration-150 ease-out hover:text-[#B22234]"
                     >
                       {s.label}
                     </Link>
@@ -54,7 +54,7 @@ export function SiteFooter({ wide = false, className = "" }: Props) {
                 <li>
                   <Link
                     href="/feed"
-                    className="font-mono text-[11px] uppercase tracking-widest text-foreground/70 hover:text-[#B22234]"
+                    className="inline-flex min-h-10 items-center font-mono text-[11px] uppercase tracking-widest text-foreground/70 transition-colors duration-150 ease-out hover:text-[#B22234]"
                   >
                     Mi feed
                   </Link>
@@ -62,7 +62,7 @@ export function SiteFooter({ wide = false, className = "" }: Props) {
                 <li>
                   <Link
                     href="/publicar"
-                    className="font-mono text-[11px] uppercase tracking-widest text-foreground/70 hover:text-[#B22234]"
+                    className="inline-flex min-h-10 items-center font-mono text-[11px] uppercase tracking-widest text-foreground/70 transition-colors duration-150 ease-out hover:text-[#B22234]"
                   >
                     Publicar
                   </Link>
@@ -70,7 +70,7 @@ export function SiteFooter({ wide = false, className = "" }: Props) {
                 <li>
                   <Link
                     href="/login"
-                    className="font-mono text-[11px] uppercase tracking-widest text-foreground/70 hover:text-[#B22234]"
+                    className="inline-flex min-h-10 items-center font-mono text-[11px] uppercase tracking-widest text-foreground/70 transition-colors duration-150 ease-out hover:text-[#B22234]"
                   >
                     Acceso
                   </Link>
@@ -86,7 +86,7 @@ export function SiteFooter({ wide = false, className = "" }: Props) {
                 <li>
                   <Link
                     href="/terminos"
-                    className="font-mono text-[11px] uppercase tracking-widest text-foreground/70 hover:text-[#B22234]"
+                    className="inline-flex min-h-10 items-center font-mono text-[11px] uppercase tracking-widest text-foreground/70 transition-colors duration-150 ease-out hover:text-[#B22234]"
                   >
                     Términos
                   </Link>
@@ -94,7 +94,7 @@ export function SiteFooter({ wide = false, className = "" }: Props) {
                 <li>
                   <Link
                     href="/privacidad"
-                    className="font-mono text-[11px] uppercase tracking-widest text-foreground/70 hover:text-[#B22234]"
+                    className="inline-flex min-h-10 items-center font-mono text-[11px] uppercase tracking-widest text-foreground/70 transition-colors duration-150 ease-out hover:text-[#B22234]"
                   >
                     Privacidad
                   </Link>
@@ -103,7 +103,7 @@ export function SiteFooter({ wide = false, className = "" }: Props) {
                   <button
                     type="button"
                     onClick={() => openCookieSettings()}
-                    className="font-mono text-[11px] uppercase tracking-widest text-foreground/70 hover:text-[#B22234]"
+                    className="inline-flex min-h-10 items-center font-mono text-[11px] uppercase tracking-widest text-foreground/70 transition-colors duration-150 ease-out hover:text-[#B22234]"
                   >
                     Cookies
                   </button>
