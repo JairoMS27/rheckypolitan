@@ -71,81 +71,22 @@ const STORY = [
   },
 ] as const;
 
-type LayoutMetrics = {
-  mobile: boolean;
-  stageW: number;
-  stageH: number;
-  spineW: number;
-  spineH: number;
-  spineGap: number;
-  coverW: number;
-  coverH: number;
-  tableGapX: number;
-  tableGapY: number;
-  maxCols: number;
-  shelfTop: number;
-  tableCenterY: number;
-  sidePad: number;
-};
+const SPINE_W = 44;
+const SPINE_H = 300;
+const COVER_W = 118;
+const COVER_H = 158;
+const SPINE_GAP = 8;
+const TABLE_GAP_X = 18;
+const TABLE_GAP_Y = 16;
 
-/** Responsive geometry so shelf + table always fit the viewport. */
-function computeMetrics(stageW: number, stageH: number, n: number): LayoutMetrics {
-  const mobile = stageW < 768;
-  const sidePad = mobile ? 14 : 40;
-  const usableW = Math.max(200, stageW - sidePad * 2);
-
-  // Spines: shrink to fit full row on screen
-  const spineGap = mobile ? 3 : 8;
-  const idealSpineW = mobile ? 28 : 44;
-  let spineW = idealSpineW;
-  if (n > 0) {
-    const fit = Math.floor((usableW - (n - 1) * spineGap) / n);
-    spineW = Math.max(mobile ? 14 : 22, Math.min(idealSpineW, fit));
-  }
-  // Height: leave room for header + table
-  const spineH = Math.round(
-    Math.min(mobile ? 170 : 300, Math.max(mobile ? 120 : 200, stageH * (mobile ? 0.32 : 0.46))),
-  );
-
-  // Covers grid
-  const maxCols = mobile ? (stageW < 380 ? 2 : 3) : stageW < 960 ? 4 : 5;
-  const cols = Math.min(Math.max(n, 1), maxCols);
-  const tableGapX = mobile ? 8 : 18;
-  const tableGapY = mobile ? 8 : 16;
-  const coverW = Math.min(mobile ? 96 : 118, Math.floor((usableW - (cols - 1) * tableGapX) / cols));
-  const coverH = Math.round(coverW * (158 / 118));
-
-  // Vertical: keep spines fully inside stage (no negative y)
-  const shelfTop = Math.min(stageH * (mobile ? 0.36 : 0.4), stageH - (mobile ? 140 : 180));
-  const safeShelfTop = Math.max(spineH + 8, shelfTop);
-  const tableCenterY = Math.min(stageH * (mobile ? 0.7 : 0.68), stageH - coverH * 0.55 - 12);
-
+function shelfPose(i: number, n: number, stageW: number, shelfTop: number): Pose {
+  const total = n * SPINE_W + Math.max(0, n - 1) * SPINE_GAP;
+  const start = (stageW - total) / 2;
   return {
-    mobile,
-    stageW,
-    stageH,
-    spineW,
-    spineH,
-    spineGap,
-    coverW: Math.max(56, coverW),
-    coverH: Math.max(76, coverH),
-    tableGapX,
-    tableGapY,
-    maxCols,
-    shelfTop: safeShelfTop,
-    tableCenterY: Math.max(safeShelfTop + 40, tableCenterY),
-    sidePad,
-  };
-}
-
-function shelfPose(i: number, n: number, m: LayoutMetrics): Pose {
-  const total = n * m.spineW + Math.max(0, n - 1) * m.spineGap;
-  const start = (m.stageW - total) / 2;
-  return {
-    x: start + i * (m.spineW + m.spineGap),
-    y: m.shelfTop - m.spineH,
-    w: m.spineW,
-    h: m.spineH,
+    x: start + i * (SPINE_W + SPINE_GAP),
+    y: shelfTop - SPINE_H,
+    w: SPINE_W,
+    h: SPINE_H,
     rot: 0,
     z: 10 + i,
   };
@@ -153,32 +94,34 @@ function shelfPose(i: number, n: number, m: LayoutMetrics): Pose {
 
 /**
  * Ordered table layout: neat centered grid, slight alternate tilt.
- * Cover sizes come from responsive metrics so they fit on mobile.
+ * Reads as magazines carefully laid out — not a messy pile.
  */
-function tablePose(i: number, n: number, m: LayoutMetrics): Pose {
-  const cols = Math.min(n, m.maxCols);
+function tablePose(i: number, n: number, stageW: number, tableCenterY: number): Pose {
+  // Prefer a wide row; wrap only when needed
+  const maxCols = stageW < 640 ? 3 : stageW < 960 ? 4 : 5;
+  const cols = Math.min(n, maxCols);
   const rows = Math.ceil(n / cols);
+  // Center incomplete last row
   const row = Math.floor(i / cols);
   const indexInRow = i % cols;
   const itemsInRow = row === rows - 1 ? n - row * cols : cols;
 
-  const gridW = cols * m.coverW + (cols - 1) * m.tableGapX;
-  const gridH = rows * m.coverH + (rows - 1) * m.tableGapY;
-  const rowW = itemsInRow * m.coverW + (itemsInRow - 1) * m.tableGapX;
+  const gridW = cols * COVER_W + (cols - 1) * TABLE_GAP_X;
+  const gridH = rows * COVER_H + (rows - 1) * TABLE_GAP_Y;
+  const rowW = itemsInRow * COVER_W + (itemsInRow - 1) * TABLE_GAP_X;
 
-  const originX = (m.stageW - gridW) / 2;
-  // Keep grid inside stage vertically
-  let originY = m.tableCenterY - gridH / 2;
-  originY = Math.max(8, Math.min(originY, m.stageH - gridH - 8));
+  const originX = (stageW - gridW) / 2;
+  const originY = tableCenterY - gridH / 2;
   const rowOriginX = originX + (gridW - rowW) / 2;
 
-  const rot = m.mobile ? (indexInRow % 2 === 0 ? -1 : 1) : indexInRow % 2 === 0 ? -1.8 : 1.8;
+  // Tiny ordered tilt (editorial, not chaotic)
+  const rot = indexInRow % 2 === 0 ? -1.8 : 1.8;
 
   return {
-    x: rowOriginX + indexInRow * (m.coverW + m.tableGapX),
-    y: originY + row * (m.coverH + m.tableGapY),
-    w: m.coverW,
-    h: m.coverH,
+    x: rowOriginX + indexInRow * (COVER_W + TABLE_GAP_X),
+    y: originY + row * (COVER_H + TABLE_GAP_Y),
+    w: COVER_W,
+    h: COVER_H,
     rot,
     z: 30 + row * 10 + indexInRow,
   };
@@ -320,22 +263,19 @@ export function MagazineShelf({ issues }: Props) {
 
     let ctx: gsap.Context | undefined;
     let killed = false;
-    let setupId = 0;
-    let setupId2 = 0;
 
-    const build = () => {
+    const setupId = requestAnimationFrame(() => {
       if (killed || !sectionRef.current || !pinRef.current || !stageRef.current) return;
 
-      // Kill previous timeline/context before rebuild (resize)
-      ctx?.revert();
-      ctx = undefined;
-
       const stage = stageRef.current;
-      const stageW = stage.clientWidth || window.innerWidth || 360;
-      const stageH = stage.clientHeight || Math.round(window.innerHeight * 0.55) || 400;
+      const stageW = stage.clientWidth || 1000;
+      const stageH = stage.clientHeight || 600;
       const n = ordered.length;
       const reduced = prefersReducedMotion();
-      const m = computeMetrics(stageW, stageH, n);
+
+      // Geometry: shelf in upper third, table in lower half
+      const shelfTop = stageH * 0.38;
+      const tableCenterY = stageH * 0.68;
 
       const mags = ordered
         .map((issue) => {
@@ -346,52 +286,41 @@ export function MagazineShelf({ issues }: Props) {
 
       if (mags.length === 0) return;
 
-      const shelfContentW = n * m.spineW + Math.max(0, n - 1) * m.spineGap;
-      const shelfW = Math.min(
-        stageW - m.sidePad * 2,
-        Math.max(shelfContentW + (m.mobile ? 36 : 100), m.mobile ? 200 : 420),
-      );
-      const shelfBoxH = m.mobile ? 44 : 64;
+      // Size furniture to content
+      const shelfContentW = n * SPINE_W + Math.max(0, n - 1) * SPINE_GAP;
+      const shelfW = Math.min(stageW - 48, Math.max(shelfContentW + 100, 420));
+      const shelfH = 28;
 
       if (shelfUnitRef.current) {
         gsap.set(shelfUnitRef.current, {
           left: (stageW - shelfW) / 2,
-          top: m.shelfTop - (m.mobile ? 2 : 4),
+          top: shelfTop - 4,
           width: shelfW,
-          height: shelfBoxH,
-          opacity: 1,
-          y: 0,
-          clearProps: undefined,
+          height: shelfH + 36,
         });
       }
 
-      const cols = Math.min(n, m.maxCols);
+      const maxCols = stageW < 640 ? 3 : stageW < 960 ? 4 : 5;
+      const cols = Math.min(n, maxCols);
       const rows = Math.ceil(n / cols);
       const tableW = Math.min(
-        stageW - m.sidePad * 2,
-        Math.max(
-          cols * m.coverW + (cols - 1) * m.tableGapX + (m.mobile ? 36 : 100),
-          m.mobile ? 200 : 380,
-        ),
+        stageW - 40,
+        Math.max(cols * COVER_W + (cols - 1) * TABLE_GAP_X + 100, 380),
       );
-      const tableH = Math.max(
-        rows * m.coverH + (rows - 1) * m.tableGapY + (m.mobile ? 48 : 80),
-        m.mobile ? 160 : 220,
-      );
+      const tableH = Math.max(rows * COVER_H + (rows - 1) * TABLE_GAP_Y + 80, 220);
 
       if (tableUnitRef.current) {
         gsap.set(tableUnitRef.current, {
           left: (stageW - tableW) / 2,
-          top: Math.max(8, m.tableCenterY - tableH * 0.42),
+          top: tableCenterY - tableH * 0.42,
           width: tableW,
           height: tableH,
           opacity: reduced ? 1 : 0,
-          y: 0,
         });
       }
 
       mags.forEach(({ el }, i) => {
-        const from = shelfPose(i, n, m);
+        const from = shelfPose(i, n, stageW, shelfTop);
         gsap.set(el, {
           left: from.x,
           top: from.y,
@@ -400,9 +329,8 @@ export function MagazineShelf({ issues }: Props) {
           rotation: from.rot,
           zIndex: from.z,
           opacity: 1,
-          visibility: "visible",
           force3D: true,
-          boxShadow: m.mobile ? "1px 4px 10px rgba(0,0,0,0.18)" : "2px 8px 16px rgba(0,0,0,0.2)",
+          boxShadow: "2px 8px 16px rgba(0,0,0,0.2)",
         });
         const spine = el.querySelector<HTMLElement>("[data-face=spine]");
         const cover = el.querySelector<HTMLElement>("[data-face=cover]");
@@ -413,7 +341,7 @@ export function MagazineShelf({ issues }: Props) {
       ctx = gsap.context(() => {
         if (reduced) {
           mags.forEach(({ el }, i) => {
-            const to = tablePose(i, n, m);
+            const to = tablePose(i, n, stageW, tableCenterY);
             gsap.set(el, {
               left: to.x,
               top: to.y,
@@ -421,7 +349,7 @@ export function MagazineShelf({ issues }: Props) {
               height: to.h,
               rotation: to.rot,
               zIndex: to.z,
-              boxShadow: "0 10px 20px rgba(0,0,0,0.14)",
+              boxShadow: "0 14px 28px rgba(0,0,0,0.16)",
             });
             const spine = el.querySelector<HTMLElement>("[data-face=spine]");
             const cover = el.querySelector<HTMLElement>("[data-face=cover]");
@@ -435,8 +363,7 @@ export function MagazineShelf({ issues }: Props) {
           return;
         }
 
-        // Shorter runway on mobile so it doesn't feel endless
-        const runway = m.mobile ? Math.max(200, 160 + n * 36) : Math.max(280, 210 + n * 45);
+        const runway = Math.max(280, 210 + n * 45);
 
         const tl = gsap.timeline({
           defaults: { ease: "none" },
@@ -445,11 +372,9 @@ export function MagazineShelf({ issues }: Props) {
             start: "top top",
             end: `+=${runway}%`,
             pin: pinRef.current,
-            scrub: m.mobile ? 0.65 : 0.85,
+            scrub: 0.85,
             anticipatePin: 1,
             invalidateOnRefresh: true,
-            // Avoid pin jump issues on iOS address bar
-            pinSpacing: true,
             onUpdate: (self) => {
               const p = self.progress;
               if (progressRef.current) {
@@ -468,16 +393,17 @@ export function MagazineShelf({ issues }: Props) {
           },
         });
 
+        // Table rises into view
         if (tableUnitRef.current) {
-          gsap.set(tableUnitRef.current, { y: m.mobile ? 24 : 40 });
+          gsap.set(tableUnitRef.current, { y: 40 });
           tl.to(tableUnitRef.current, { opacity: 1, y: 0, duration: 0.2, ease: "power2.out" }, 0.1);
         }
 
-        const liftPx = m.mobile ? 28 : 56;
-
+        // Magazines leave left → right in strict order
         mags.forEach(({ el }, i) => {
-          const from = shelfPose(i, n, m);
-          const to = tablePose(i, n, m);
+          const from = shelfPose(i, n, stageW, shelfTop);
+          const to = tablePose(i, n, stageW, tableCenterY);
+          // Sequential stagger: each waits for previous to be mid-flight
           const slot = 0.14 + (i / Math.max(n, 1)) * 0.52;
           const liftT = slot;
           const flyT = slot + 0.07;
@@ -486,25 +412,27 @@ export function MagazineShelf({ issues }: Props) {
           const spine = el.querySelector<HTMLElement>("[data-face=spine]");
           const cover = el.querySelector<HTMLElement>("[data-face=cover]");
 
+          // 1. Pull straight out from shelf (no random wobble)
           tl.to(
             el,
             {
-              top: Math.max(4, from.y - liftPx),
+              top: from.y - 56,
               left: from.x,
               rotation: 0,
               zIndex: 50 + i,
-              boxShadow: "0 16px 28px rgba(0,0,0,0.2)",
+              boxShadow: "0 22px 40px rgba(0,0,0,0.22)",
               duration: 0.07,
               ease: "power2.out",
             },
             liftT,
           );
 
+          // 2. Transform to cover size while flying to grid seat
           tl.to(
             el,
             {
               left: to.x,
-              top: Math.max(4, to.y - 8),
+              top: to.y - 10,
               width: to.w,
               height: to.h,
               rotation: to.rot * 0.5,
@@ -518,13 +446,14 @@ export function MagazineShelf({ issues }: Props) {
           if (spine) tl.to(spine, { opacity: 0, duration: 0.08 }, flyT + 0.03);
           if (cover) tl.to(cover, { opacity: 1, duration: 0.08 }, flyT + 0.04);
 
+          // 3. Settle flat on the table, final rotation
           tl.to(
             el,
             {
               top: to.y,
               rotation: to.rot,
               zIndex: to.z,
-              boxShadow: "0 10px 20px rgba(0,0,0,0.14), 0 2px 4px rgba(0,0,0,0.06)",
+              boxShadow: "0 12px 26px rgba(0,0,0,0.14), 0 2px 4px rgba(0,0,0,0.06)",
               duration: 0.07,
               ease: "power2.out",
             },
@@ -532,40 +461,22 @@ export function MagazineShelf({ issues }: Props) {
           );
         });
 
+        // Empty shelf fades back (still visible as furniture)
         if (shelfUnitRef.current) {
-          tl.to(
-            shelfUnitRef.current,
-            { opacity: 0.45, y: m.mobile ? -4 : -8, duration: 0.18 },
-            0.55,
-          );
+          tl.to(shelfUnitRef.current, { opacity: 0.45, y: -8, duration: 0.18 }, 0.55);
         }
       }, sectionRef);
 
       ScrollTrigger.refresh();
-    };
-
-    // Double rAF: wait for layout/flex stage height on mobile browsers
-    setupId = requestAnimationFrame(() => {
-      setupId2 = requestAnimationFrame(build);
     });
 
-    let resizeTimer = 0;
-    const onResize = () => {
-      window.clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(() => {
-        if (!killed) build();
-      }, 120);
-    };
+    const onResize = () => ScrollTrigger.refresh();
     window.addEventListener("resize", onResize);
-    window.addEventListener("orientationchange", onResize);
 
     return () => {
       killed = true;
       cancelAnimationFrame(setupId);
-      cancelAnimationFrame(setupId2);
-      window.clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
-      window.removeEventListener("orientationchange", onResize);
       ctx?.revert();
     };
   }, [ordered]);
@@ -605,7 +516,7 @@ export function MagazineShelf({ issues }: Props) {
     >
       <div
         ref={pinRef}
-        className="relative flex h-[100svh] min-h-[100dvh] w-full flex-col overflow-hidden bg-background text-foreground"
+        className="relative flex h-svh min-h-[640px] w-full flex-col overflow-hidden bg-background text-foreground"
       >
         {/* Soft studio light */}
         <div
@@ -625,31 +536,31 @@ export function MagazineShelf({ issues }: Props) {
           }}
         />
 
-        {/* Header — compact on mobile so stage has room */}
-        <div className="relative z-20 flex shrink-0 items-start justify-between gap-3 px-4 pt-5 sm:gap-4 sm:px-5 sm:pt-8 md:px-12 md:pt-11">
+        {/* Header */}
+        <div className="relative z-20 flex items-start justify-between gap-4 px-5 pt-8 md:px-12 md:pt-11">
           <div className="min-w-0 max-w-2xl">
-            <p className="font-mono text-[9px] uppercase tracking-[0.35em] text-[#B22234] sm:text-[10px]">
+            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#B22234]">
               {story.kicker}
             </p>
-            <h2 className="mt-1 font-display text-[clamp(1.85rem,9vw,5.5rem)] font-semibold leading-[0.92] tracking-tight sm:mt-2">
+            <h2 className="mt-2 font-display text-[clamp(2.75rem,8vw,5.5rem)] font-semibold leading-[0.92] tracking-tight">
               {story.title}
             </h2>
-            <p className="mt-1.5 max-w-md font-display text-sm italic leading-snug text-muted-foreground sm:mt-3 sm:text-lg md:text-xl">
+            <p className="mt-3 max-w-md font-display text-lg italic leading-snug text-muted-foreground md:text-xl">
               {story.line}
             </p>
           </div>
           <div className="shrink-0 text-right">
-            <p className="font-display text-3xl tabular-nums leading-none text-foreground/10 sm:text-5xl md:text-6xl">
+            <p className="font-display text-5xl tabular-nums leading-none text-foreground/10 md:text-6xl">
               {String(ordered.length).padStart(2, "0")}
             </p>
-            <p className="mt-0.5 font-mono text-[8px] uppercase tracking-[0.22em] text-muted-foreground sm:mt-1 sm:text-[9px]">
+            <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
               revistas
             </p>
           </div>
         </div>
 
-        {/* Stage — needs real height for absolute mags; flex-1 + min height */}
-        <div ref={stageRef} className="relative z-10 min-h-[240px] w-full flex-1 sm:min-h-[320px]">
+        {/* Stage */}
+        <div ref={stageRef} className="relative z-10 min-h-0 w-full flex-1">
           {/* ─── Premium wall shelf ─── */}
           <div
             ref={shelfUnitRef}
@@ -668,7 +579,7 @@ export function MagazineShelf({ issues }: Props) {
 
             {/* Metal brackets */}
             <div
-              className="absolute bottom-5 left-3 h-7 w-2 sm:bottom-7 sm:left-6 sm:h-10 sm:w-2.5"
+              className="absolute bottom-7 left-6 h-10 w-2.5"
               style={{
                 background: "linear-gradient(90deg, #9a9a9a 0%, #d0d0d0 40%, #8a8a8a 100%)",
                 boxShadow: "1px 2px 4px rgba(0,0,0,0.15)",
@@ -676,7 +587,7 @@ export function MagazineShelf({ issues }: Props) {
               }}
             />
             <div
-              className="absolute bottom-5 right-3 h-7 w-2 sm:bottom-7 sm:right-6 sm:h-10 sm:w-2.5"
+              className="absolute bottom-7 right-6 h-10 w-2.5"
               style={{
                 background: "linear-gradient(90deg, #9a9a9a 0%, #d0d0d0 40%, #8a8a8a 100%)",
                 boxShadow: "1px 2px 4px rgba(0,0,0,0.15)",
@@ -686,7 +597,7 @@ export function MagazineShelf({ issues }: Props) {
 
             {/* Thick oak plank */}
             <div
-              className="absolute bottom-3 left-0 right-0 h-3.5 overflow-hidden sm:bottom-5 sm:h-5"
+              className="absolute bottom-5 left-0 right-0 h-5 overflow-hidden"
               style={{
                 background: `
                   linear-gradient(180deg,
@@ -730,7 +641,7 @@ export function MagazineShelf({ issues }: Props) {
 
             {/* Front lip (depth) */}
             <div
-              className="absolute bottom-1 left-0 right-0 h-2 sm:bottom-2 sm:h-3"
+              className="absolute bottom-2 left-0 right-0 h-3"
               style={{
                 background: "linear-gradient(180deg, #a89070 0%, #8a7458 55%, #6e5a42 100%)",
                 boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
@@ -739,7 +650,7 @@ export function MagazineShelf({ issues }: Props) {
 
             {/* Cast shadow under shelf */}
             <div
-              className="absolute -bottom-1 left-3 right-3 h-3 sm:left-4 sm:right-4 sm:h-4"
+              className="absolute -bottom-1 left-4 right-4 h-4"
               style={{
                 background: "radial-gradient(ellipse at 50% 0%, rgba(0,0,0,0.18), transparent 70%)",
                 filter: "blur(3px)",
@@ -779,7 +690,7 @@ export function MagazineShelf({ issues }: Props) {
                   0 28px 50px rgba(40,25,10,0.18),
                   0 8px 16px rgba(0,0,0,0.08)
                 `,
-                transform: "perspective(1200px) rotateX(var(--table-tilt, 52deg))",
+                transform: "perspective(1200px) rotateX(52deg)",
                 transformOrigin: "50% 50%",
               }}
             >
@@ -872,9 +783,8 @@ export function MagazineShelf({ issues }: Props) {
                 style={{
                   left: 0,
                   top: 0,
-                  width: 28,
-                  height: 140,
-                  visibility: "hidden",
+                  width: SPINE_W,
+                  height: SPINE_H,
                   borderRadius: onTable ? 1 : 0,
                 }}
                 onClick={() => selectIssue(issue)}
@@ -979,9 +889,9 @@ export function MagazineShelf({ issues }: Props) {
         </div>
 
         {/* Progress */}
-        <div className="relative z-20 shrink-0 px-4 pb-4 sm:px-5 sm:pb-6 md:px-12">
-          <div className="mx-auto flex max-w-[1100px] items-center gap-3 sm:gap-4">
-            <p className="max-w-[55%] font-mono text-[8px] uppercase tracking-[0.2em] text-muted-foreground sm:max-w-none sm:text-[9px] sm:tracking-[0.28em]">
+        <div className="relative z-20 px-5 pb-6 md:px-12">
+          <div className="mx-auto flex max-w-[1100px] items-center gap-4">
+            <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-muted-foreground">
               {state.phase === "idle"
                 ? onTable
                   ? "En la mesa · clic para abrir"
