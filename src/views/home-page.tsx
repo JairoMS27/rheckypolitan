@@ -510,46 +510,25 @@ export function HomePage() {
           </section>
         )}
 
-        {/* Interactive SVG magazine shelf */}
-        <section id="archivo" className="scroll-mt-8">
-          <div className="mx-auto max-w-[1400px] px-5 py-14 md:px-8 md:py-20">
-            <div className="mb-10 grid grid-cols-1 items-end gap-6 border-b border-foreground pb-6 md:grid-cols-12">
-              <div className="md:col-span-8">
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
-                  ★ Colección
-                </p>
-                <h2 className="mt-2 font-display text-4xl leading-none md:text-6xl">El estante</h2>
-                <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-                  Solo los lomos: tipografía vertical, profundidad 3D y un estante flotante. Entra
-                  en modo inmersivo, saca una revista y hojea con volteo real de páginas.
-                </p>
-              </div>
-              <div className="md:col-span-4 md:text-right">
-                <p className="font-display text-5xl tabular-nums leading-none text-foreground/15 md:text-6xl">
-                  {issues ? String(issues.length).padStart(2, "0") : "—"}
-                </p>
-                <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  números en archivo
-                </p>
-              </div>
+        {/* Cinematic scroll shelf — pinned scene, magazines arrive on scroll */}
+        <section id="archivo" className="scroll-mt-0">
+          {issues === null ? (
+            <div className="flex h-svh min-h-[480px] items-center justify-center bg-[#0c0a09]">
+              <div className="h-10 w-48 animate-pulse bg-white/10" />
             </div>
-
-            {issues === null ? (
-              <Skeleton />
-            ) : issues.length === 0 ? (
-              <Empty />
-            ) : (
-              <MagazineShelf
-                issues={issues.map((i) => ({
-                  id: i.id,
-                  number: i.number,
-                  title: i.title,
-                  cover_path: i.cover_path,
-                  published_at: i.published_at,
-                }))}
-              />
-            )}
-          </div>
+          ) : issues.length === 0 ? (
+            <Empty />
+          ) : (
+            <MagazineShelf
+              issues={issues.map((i) => ({
+                id: i.id,
+                number: i.number,
+                title: i.title,
+                cover_path: i.cover_path,
+                published_at: i.published_at,
+              }))}
+            />
+          )}
         </section>
 
         {/* Voices */}
@@ -783,17 +762,13 @@ export function HomePage() {
   );
 }
 
-function Skeleton() {
-  return (
-    <div className="mx-auto aspect-[1100/420] w-full max-w-[1100px] animate-pulse rounded-sm bg-muted" />
-  );
-}
-
 function Empty() {
   return (
-    <div className="border border-dashed border-foreground/30 px-6 py-24 text-center">
+    <div className="border-y border-foreground/15 bg-[#0c0a09] px-6 py-24 text-center text-[#f3ebe0]">
       <p className="font-display text-2xl">Aún no hay números publicados.</p>
-      <p className="mt-2 text-sm text-muted-foreground">El primer número aparecerá aquí pronto.</p>
+      <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-white/40">
+        El primer número aparecerá aquí pronto.
+      </p>
     </div>
   );
 }
