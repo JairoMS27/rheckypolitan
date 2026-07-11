@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
   DEFAULT_SHELF_PER_ROW,
+  groupSlotsByRow,
   layoutShelfIssues,
   slotPixelPosition,
+  spinePaletteForIssue,
   type ShelfIssueInput,
 } from "./shelf-layout";
 
@@ -58,5 +60,26 @@ describe("layoutShelfIssues", () => {
     expect(pos.x).toBeLessThan(layout.viewBox.w);
     expect(pos.spineW).toBeGreaterThan(0);
     expect(pos.spineH).toBeGreaterThan(0);
+  });
+
+  test("spines are thin editorial lomos (not fat covers)", () => {
+    const layout = layoutShelfIssues(fakeIssues(2), 6);
+    const pos = slotPixelPosition(layout, layout.slots[0]!);
+    expect(pos.spineW).toBeLessThanOrEqual(28);
+    expect(pos.spineH).toBeGreaterThan(pos.spineW * 4);
+  });
+
+  test("groupSlotsByRow buckets by row index", () => {
+    const layout = layoutShelfIssues(fakeIssues(10), 4);
+    const groups = groupSlotsByRow(layout);
+    expect(groups).toHaveLength(3);
+    expect(groups[0]).toHaveLength(4);
+    expect(groups[1]).toHaveLength(4);
+    expect(groups[2]).toHaveLength(2);
+  });
+
+  test("spinePaletteForIssue is deterministic", () => {
+    expect(spinePaletteForIssue(1)).toEqual(spinePaletteForIssue(1));
+    expect(spinePaletteForIssue(1).bg).not.toBe(spinePaletteForIssue(2).bg);
   });
 });

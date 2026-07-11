@@ -109,9 +109,7 @@ export function HomePage() {
 
     void supabase
       .from("posts")
-      .select(
-        "id,section,slug,title,excerpt,cover_path,cover_position,published_at,author",
-      )
+      .select("id,section,slug,title,excerpt,cover_path,cover_position,published_at,author")
       .eq("published", true)
       .order("published_at", { ascending: false })
       .limit(6)
@@ -155,14 +153,11 @@ export function HomePage() {
           description: "Te reenviamos la Carta de bienvenida.",
         });
       } else if (data?.sent === false) {
-        toast.success(
-          data?.already ? "Ya estabas suscrita/o" : "Gracias por suscribirte",
-          {
-            description:
-              data?.warning ??
-              "Estás en la lista. El correo de confirmación puede tardar un momento.",
-          },
-        );
+        toast.success(data?.already ? "Ya estabas suscrita/o" : "Gracias por suscribirte", {
+          description:
+            data?.warning ??
+            "Estás en la lista. El correo de confirmación puede tardar un momento.",
+        });
       } else {
         toast.success("Gracias por suscribirte", {
           description: "Te acabamos de mandar una Carta desde Kentucky.",
@@ -213,8 +208,7 @@ export function HomePage() {
       <div
         className="h-1.5 w-full"
         style={{
-          backgroundImage:
-            "repeating-linear-gradient(to right, #B22234 0 10px, #ffffff 10px 20px)",
+          backgroundImage: "repeating-linear-gradient(to right, #B22234 0 10px, #ffffff 10px 20px)",
         }}
         aria-hidden
       />
@@ -278,9 +272,7 @@ export function HomePage() {
       </header>
 
       <main>
-        <h1 className="sr-only">
-          Rheckypolitan — Archivo de crónicas desde Kentucky
-        </h1>
+        <h1 className="sr-only">Rheckypolitan — Archivo de crónicas desde Kentucky</h1>
 
         {/* HERO — cover fills full height of the row (matches tirada column) */}
         <section className="border-b border-foreground/15">
@@ -323,8 +315,8 @@ export function HomePage() {
                       {latest.title}
                     </h2>
                     <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/80 md:text-base">
-                      Hojea el número como una revista de papel: portada, lomo y
-                      páginas al ritmo del bourbon.
+                      Hojea el número como una revista de papel: portada, lomo y páginas al ritmo
+                      del bourbon.
                     </p>
                     <span className="mt-6 inline-flex items-center gap-2 border border-white/40 bg-white/10 px-4 py-2.5 font-mono text-[11px] font-bold uppercase tracking-widest text-white backdrop-blur-sm transition group-hover:border-white group-hover:bg-white group-hover:text-foreground">
                       Leer el número →
@@ -355,9 +347,8 @@ export function HomePage() {
                   <span className="italic text-[#B22234]">Una sola mesa.</span>
                 </h2>
                 <p className="mt-4 text-sm leading-relaxed text-foreground/75">
-                  Rheckypolitan es un archivo vivo de crónicas, ensayos y
-                  postales desde Kentucky. Lee las revistas digitales y los
-                  artículos de sección sin prisa.
+                  Rheckypolitan es un archivo vivo de crónicas, ensayos y postales desde Kentucky.
+                  Lee las revistas digitales y los artículos de sección sin prisa.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-2">
                   <Link
@@ -384,9 +375,8 @@ export function HomePage() {
                     “
                   </span>
                   <p className="-mt-4 font-display text-xl italic leading-snug md:text-2xl">
-                    Nunca os fiéis de las personas que viven debajo de vosotros.
-                    Si os drenan la batería, la única solución es drenarles a
-                    ellos la switch.
+                    Nunca os fiéis de las personas que viven debajo de vosotros. Si os drenan la
+                    batería, la única solución es drenarles a ellos la switch.
                   </p>
                 </div>
                 <div className="mt-6 flex items-center gap-3 border-t border-foreground/10 pt-4">
@@ -398,9 +388,7 @@ export function HomePage() {
                     className="h-11 w-11 object-cover grayscale"
                   />
                   <div>
-                    <p className="font-mono text-[11px] uppercase tracking-widest">
-                      Rhecky
-                    </p>
+                    <p className="font-mono text-[11px] uppercase tracking-widest">Rhecky</p>
                     <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                       La Rioja, KY · Fundador
                     </p>
@@ -426,9 +414,7 @@ export function HomePage() {
                         key={`${i}-${d}`}
                         className="flex h-9 w-6 items-center justify-center border border-[#B22234]/30 bg-[#B22234]/5"
                       >
-                        <span className="font-mono text-lg tabular-nums leading-none">
-                          {d}
-                        </span>
+                        <span className="font-mono text-lg tabular-nums leading-none">{d}</span>
                       </div>
                     ))}
                   </div>
@@ -532,12 +518,10 @@ export function HomePage() {
                 <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
                   ★ Colección
                 </p>
-                <h2 className="mt-2 font-display text-4xl leading-none md:text-6xl">
-                  El estante
-                </h2>
+                <h2 className="mt-2 font-display text-4xl leading-none md:text-6xl">El estante</h2>
                 <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-                  Las revistas están en el estante. Haz clic en una: se sale,
-                  se abre y puedes pasar las páginas como en el visualizador.
+                  Solo los lomos: tipografía vertical, profundidad 3D y un estante flotante. Entra
+                  en modo inmersivo, saca una revista y hojea con volteo real de páginas.
                 </p>
               </div>
               <div className="md:col-span-4 md:text-right">
@@ -561,6 +545,7 @@ export function HomePage() {
                   number: i.number,
                   title: i.title,
                   cover_path: i.cover_path,
+                  published_at: i.published_at,
                 }))}
               />
             )}
@@ -603,15 +588,11 @@ export function HomePage() {
                   <div className="flex h-14 w-14 items-center justify-center bg-foreground font-mono text-sm font-bold text-background">
                     {c.initials}
                   </div>
-                  <p className="mt-5 font-display text-2xl leading-tight">
-                    {c.name}
-                  </p>
+                  <p className="mt-5 font-display text-2xl leading-tight">{c.name}</p>
                   <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                     {c.city}
                   </p>
-                  <p className="mt-4 flex-1 text-sm leading-relaxed text-foreground/80">
-                    {c.bio}
-                  </p>
+                  <p className="mt-4 flex-1 text-sm leading-relaxed text-foreground/80">{c.bio}</p>
                   <div className="mt-6 border-t border-foreground/10 pt-4 font-mono text-[10px] uppercase tracking-widest text-[#B22234]">
                     Colaborador habitual ✦
                   </div>
@@ -628,9 +609,7 @@ export function HomePage() {
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B22234]">
                 ★ Línea de tiempo
               </p>
-              <h2 className="mt-2 font-display text-4xl leading-tight md:text-5xl">
-                Por año
-              </h2>
+              <h2 className="mt-2 font-display text-4xl leading-tight md:text-5xl">Por año</h2>
               <ul className="mt-10 space-y-0">
                 {issuesByYear.map(({ year, items }, yi) => (
                   <li
@@ -644,8 +623,7 @@ export function HomePage() {
                         {year}
                       </span>
                       <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                        {items.length}{" "}
-                        {items.length === 1 ? "entrega" : "entregas"}
+                        {items.length} {items.length === 1 ? "entrega" : "entregas"}
                       </p>
                     </div>
                     <ul className="flex flex-wrap gap-2 md:col-span-9">
@@ -659,9 +637,7 @@ export function HomePage() {
                               {String(i.number).padStart(2, "0")}
                             </span>
                             <span className="hidden h-3 w-px bg-foreground/15 group-hover:bg-white/30 sm:block" />
-                            <span className="truncate font-display text-sm">
-                              {i.title}
-                            </span>
+                            <span className="truncate font-display text-sm">{i.title}</span>
                           </Link>
                         </li>
                       ))}
@@ -686,8 +662,8 @@ export function HomePage() {
                 <span className="italic text-[#ff8a8a]">en tu bandeja.</span>
               </h2>
               <p className="mt-5 max-w-md text-sm leading-relaxed text-background/65">
-                Te avisamos cuando sale un número nuevo y, de paso, una columna
-                corta escrita a mano. Sin spam, sin algoritmos, sin trucos.
+                Te avisamos cuando sale un número nuevo y, de paso, una columna corta escrita a
+                mano. Sin spam, sin algoritmos, sin trucos.
               </p>
             </div>
             <form
@@ -799,8 +775,7 @@ export function HomePage() {
       <div
         className="h-1.5 w-full"
         style={{
-          backgroundImage:
-            "repeating-linear-gradient(to right, #B22234 0 10px, #ffffff 10px 20px)",
+          backgroundImage: "repeating-linear-gradient(to right, #B22234 0 10px, #ffffff 10px 20px)",
         }}
         aria-hidden
       />
@@ -810,7 +785,7 @@ export function HomePage() {
 
 function Skeleton() {
   return (
-    <div className="mx-auto aspect-[1000/400] w-full max-w-[1100px] animate-pulse bg-muted" />
+    <div className="mx-auto aspect-[1100/420] w-full max-w-[1100px] animate-pulse rounded-sm bg-muted" />
   );
 }
 
@@ -818,9 +793,7 @@ function Empty() {
   return (
     <div className="border border-dashed border-foreground/30 px-6 py-24 text-center">
       <p className="font-display text-2xl">Aún no hay números publicados.</p>
-      <p className="mt-2 text-sm text-muted-foreground">
-        El primer número aparecerá aquí pronto.
-      </p>
+      <p className="mt-2 text-sm text-muted-foreground">El primer número aparecerá aquí pronto.</p>
     </div>
   );
 }

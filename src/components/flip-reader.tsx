@@ -5,11 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import HTMLFlipBook from "react-pageflip";
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, X } from "lucide-react";
 import { publicUrl } from "@/lib/storage";
-import {
-  applyFlipReport,
-  clampPageIndex,
-  displayPageNumber,
-} from "@/lib/page-index";
+import { applyFlipReport, clampPageIndex, displayPageNumber } from "@/lib/page-index";
 
 export type FlipPage = {
   index: number;
@@ -23,6 +19,10 @@ type Props = {
   onClose: () => void;
   /** Optional class for the full-screen root */
   className?: string;
+  /** Label for the close / return control (e.g. "Volver al Estante"). */
+  closeLabel?: string;
+  /** Show page thumbnails strip for quick navigation. */
+  showThumbnails?: boolean;
 };
 
 /**
@@ -35,6 +35,8 @@ export function FlipReader({
   pages,
   onClose,
   className = "",
+  closeLabel = "Cerrar",
+  showThumbnails = false,
 }: Props) {
   const [currentPage, setCurrentPage] = useState(0);
   const [isPortrait, setIsPortrait] = useState(false);
@@ -129,17 +131,17 @@ export function FlipReader({
       aria-modal="true"
       aria-label={`Leyendo ${title}`}
     >
-      <div className="flex items-center justify-between px-5 py-4">
+      <div className="flex items-center justify-between gap-3 px-5 py-4">
         <button
           type="button"
           onClick={onClose}
           className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-white/60 transition hover:text-white"
         >
           <X className="h-4 w-4" />
-          Cerrar
+          {closeLabel}
         </button>
-        <div className="text-center">
-          <div className="font-display text-base">{title}</div>
+        <div className="min-w-0 text-center">
+          <div className="truncate font-display text-base">{title}</div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">
             Rheckypolitan · N.º {String(number).padStart(2, "0")}
           </div>
@@ -150,19 +152,48 @@ export function FlipReader({
           className="text-white/60 transition hover:text-white"
           aria-label="Pantalla completa"
         >
-          {isFullscreen ? (
-            <Minimize2 className="h-4 w-4" />
-          ) : (
-            <Maximize2 className="h-4 w-4" />
-          )}
+          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </button>
       </div>
 
+      {/* Table of contents / page index */}
+      {totalPages > 0 && (
+        <div className="flex items-center justify-center gap-2 border-b border-white/10 px-5 pb-3">
+          <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-white/35">
+            Índice
+          </span>
+          <div className="flex max-w-full flex-wrap items-center justify-center gap-1">
+            {pages.map((p, i) => (
+              <button
+                key={`toc-${p.index}`}
+                type="button"
+                onClick={() => {
+                  const pageFlip = bookRef.current?.pageFlip?.();
+                  if (pageFlip && typeof pageFlip.flip === "function") {
+                    pageFlip.flip(i);
+                  } else {
+                    setCurrentPage(i);
+                  }
+                }}
+                className={[
+                  "min-w-[1.75rem] px-1.5 py-0.5 font-mono text-[10px] tabular-nums transition",
+                  safeIndex === i
+                    ? "bg-[#B22234] text-white"
+                    : "bg-white/5 text-white/50 hover:bg-white/15 hover:text-white",
+                ].join(" ")}
+                aria-label={`Ir a página ${i + 1}`}
+                aria-current={safeIndex === i ? "page" : undefined}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="relative flex flex-1 items-center justify-center overflow-hidden">
         {pageRatio == null ? (
-          <div className="font-mono text-xs uppercase tracking-widest text-white/40">
-            Cargando…
-          </div>
+          <div className="font-mono text-xs uppercase tracking-widest text-white/40">Cargando…</div>
         ) : totalPages === 0 ? (
           <div className="px-6 text-center">
             <p className="font-display text-2xl">Sin páginas en este número</p>
@@ -253,7 +284,44 @@ export function FlipReader({
         )}
       </div>
 
-      <div className="flex flex-col items-center gap-2 px-5 py-4">
+      <div className="flex flex-col items-center gap-3 px-5 py-4">
+        {showThumbnails && totalPages > 0 && (
+          <div
+            className="flex w-full max-w-3xl gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]"
+            role="list"
+            aria-label="Miniaturas de páginas"
+          >
+            {pages.map((p, i) => (
+              <button
+                key={`thumb-${p.index}`}
+                type="button"
+                role="listitem"
+                onClick={() => {
+                  const pageFlip = bookRef.current?.pageFlip?.();
+                  if (pageFlip && typeof pageFlip.flip === "function") {
+                    pageFlip.flip(i);
+                  }
+                }}
+                className={[
+                  "relative h-16 w-12 shrink-0 overflow-hidden border transition",
+                  safeIndex === i
+                    ? "border-[#B22234] ring-1 ring-[#B22234]"
+                    : "border-white/15 opacity-70 hover:opacity-100",
+                ].join(" ")}
+                aria-label={`Miniatura página ${i + 1}`}
+              >
+                <Image
+                  src={publicUrl(p.image_path)}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  draggable={false}
+                  unoptimized
+                />
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex w-full max-w-md items-center gap-3">
           <span className="font-mono text-[10px] tabular-nums text-white/50">
             {totalPages > 0 ? String(displayPage).padStart(2, "0") : "—"}
@@ -262,8 +330,7 @@ export function FlipReader({
             <div
               className="absolute inset-y-0 left-0 bg-white transition-[width] duration-500 ease-out"
               style={{
-                width:
-                  totalPages > 0 ? `${(displayPage / totalPages) * 100}%` : "0%",
+                width: totalPages > 0 ? `${(displayPage / totalPages) * 100}%` : "0%",
               }}
             />
           </div>
@@ -272,9 +339,7 @@ export function FlipReader({
           </span>
         </div>
         <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
-          {totalPages > 0
-            ? `Página ${displayPage} de ${totalPages}`
-            : "Sin páginas"}
+          {totalPages > 0 ? `Página ${displayPage} de ${totalPages}` : "Sin páginas"}
         </div>
       </div>
     </div>
