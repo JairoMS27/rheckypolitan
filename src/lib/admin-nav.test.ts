@@ -42,7 +42,14 @@ describe("getAdminNavGroups IA", () => {
     expect(hrefs).not.toContain(ADMIN_POSTS_PATH);
     expect(hrefs).not.toContain("/admin/users");
     expect(hrefs).not.toContain("/admin/subscribers");
+    expect(hrefs).not.toContain("/admin/analytics");
     expect(hrefs).not.toContain("/admin/new");
+  });
+
+  test("sitio group includes analytics for admins", () => {
+    const groups = getAdminNavGroups();
+    const sitio = groups.find((g) => g.id === "sitio")!;
+    expect(sitio.items.some((i) => i.href === "/admin/analytics")).toBe(true);
   });
 
   test("filterAdminNavForRole gives admin full IA", () => {

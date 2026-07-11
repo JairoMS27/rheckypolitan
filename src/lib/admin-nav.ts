@@ -3,10 +3,7 @@
  * Free of React so unit tests can assert destinations and labels.
  */
 
-import {
-  ADMIN_DASHBOARD_PATH,
-  authorPostNewPath,
-} from "@/lib/dashboard-paths";
+import { ADMIN_DASHBOARD_PATH, authorPostNewPath } from "@/lib/dashboard-paths";
 
 export type AdminNavItem = {
   id: string;
@@ -62,6 +59,12 @@ export function getAdminNavGroups(): AdminNavGroup[] {
           id: "subscribers",
           label: "Suscriptores",
           href: `${ADMIN_DASHBOARD_PATH}/subscribers`,
+          access: "admin",
+        },
+        {
+          id: "analytics",
+          label: "Visitas",
+          href: `${ADMIN_DASHBOARD_PATH}/analytics`,
           access: "admin",
         },
       ],
@@ -132,10 +135,7 @@ export function isAdminNavItemActive(pathname: string, item: AdminNavItem): bool
     return pathname === `${ADMIN_DASHBOARD_PATH}/new`;
   }
   if (item.id === "articles") {
-    return (
-      pathname === ADMIN_POSTS_PATH ||
-      pathname.startsWith(`${ADMIN_POSTS_PATH}/`)
-    );
+    return pathname === ADMIN_POSTS_PATH || pathname.startsWith(`${ADMIN_POSTS_PATH}/`);
   }
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
@@ -143,6 +143,7 @@ export function isAdminNavItemActive(pathname: string, item: AdminNavItem): bool
 export function adminSectionKicker(pathname: string): string {
   if (pathname.startsWith("/admin/newspaper")) return "Revistas · Periódico";
   if (pathname.startsWith("/admin/subscribers")) return "Sitio · Newsletter";
+  if (pathname.startsWith("/admin/analytics")) return "Sitio · Visitas";
   if (pathname.startsWith("/admin/users")) return "Equipo · Usuarios";
   if (pathname.startsWith(ADMIN_POSTS_PATH)) return "Escritura · Artículos";
   if (pathname === "/admin/new") return "Revistas · Nuevo número";

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   applyConsentSideEffects,
@@ -17,6 +18,7 @@ import {
  * Essential always on; analytics is optional first-party telemetry.
  */
 export function CookieBanner() {
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState(false);
@@ -46,20 +48,24 @@ export function CookieBanner() {
     };
     window.addEventListener(OPEN_COOKIE_SETTINGS_EVENT, onOpenSettings);
 
-    const onPath = () => trackPageView();
-    window.addEventListener("popstate", onPath);
-
     return () => {
       window.removeEventListener(OPEN_COOKIE_SETTINGS_EVENT, onOpenSettings);
-      window.removeEventListener("popstate", onPath);
     };
   }, []);
 
-  // Track client navigations lightly when consent allows
+  // Track App Router navigations when consent allows
   useEffect(() => {
-    if (!ready) return;
-    trackPageView();
-  }, [ready]);
+    if (!ready || !pathname) return;
+    // Skip noisy admin/auth surfaces
+    if (
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/api") ||
+      pathname.startsWith("/auth")
+    ) {
+      return;
+    }
+    trackPageView(pathname);
+  }, [ready, pathname]);
 
   const persist = useCallback((next: CookieConsent) => {
     saveConsent(next);

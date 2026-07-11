@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_page_views: {
+        Row: {
+          id: string
+          visitor_id: string
+          path: string
+          referrer: string | null
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          visitor_id: string
+          path: string
+          referrer?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          visitor_id?: string
+          path?: string
+          referrer?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           content: string

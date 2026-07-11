@@ -21,12 +21,10 @@ export function defaultConsent(partial?: Partial<CookieConsent>): CookieConsent 
   return {
     version: COOKIE_CONSENT_VERSION,
     essential: true,
-    analytics: false,
-    marketing: false,
-    decidedAt: new Date().toISOString(),
-    ...partial,
-    essential: true,
-    version: COOKIE_CONSENT_VERSION,
+    analytics: Boolean(partial?.analytics),
+    marketing: Boolean(partial?.marketing),
+    decidedAt:
+      typeof partial?.decidedAt === "string" ? partial.decidedAt : new Date().toISOString(),
   };
 }
 
@@ -134,7 +132,14 @@ function clearVisitorId() {
   }
 }
 
-/** Lightweight first-party page hit (no third-party scripts). */
+let lastHitKey = "";
+let lastHitAt = 0;
+
+/**
+ * Record a page view when analytics consent is on:
+ * - local buffer (debug / offline)
+ * - POST /api/analytics/hit → Supabase (admin dashboard)
+ */
 export function trackPageView(path?: string): void {
   if (typeof window === "undefined") return;
   const consent = readConsentFromStorage();
@@ -143,11 +148,16 @@ export function trackPageView(path?: string): void {
   const vid = ensureVisitorId();
   if (!vid) return;
 
-  const entry = {
-    t: Date.now(),
-    p: path ?? window.location.pathname,
-    r: document.referrer || null,
-  };
+  const p = path ?? window.location.pathname;
+  const r = document.referrer || null;
+  const now = Date.now();
+  const dedupeKey = `${vid}:${p}`;
+  // Avoid double-firing on remount / consent apply (same path within 4s)
+  if (dedupeKey === lastHitKey && now - lastHitAt < 4000) return;
+  lastHitKey = dedupeKey;
+  lastHitAt = now;
+
+  const entry = { t: now, p, r };
 
   try {
     const key = "rhecky_hits_v1";
@@ -161,6 +171,21 @@ export function trackPageView(path?: string): void {
   } catch {
     /* ignore */
   }
+
+  // Fire-and-forget server record
+  void fetch("/api/analytics/hit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      visitorId: vid,
+      path: p,
+      referrer: r,
+      consentAnalytics: true,
+    }),
+    keepalive: true,
+  }).catch(() => {
+    /* network offline — local buffer remains */
+  });
 }
 
 export function applyConsentSideEffects(consent: CookieConsent): void {
