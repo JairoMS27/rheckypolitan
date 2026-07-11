@@ -748,7 +748,11 @@ export function MagazineShelf({ issues }: Props) {
           </div>
 
           {/* ─── Premium table ─── */}
-          <div ref={tableUnitRef} className="pointer-events-none absolute" aria-hidden>
+          <div
+            ref={tableUnitRef}
+            className="pointer-events-none absolute [--table-tilt:38deg] sm:[--table-tilt:52deg]"
+            aria-hidden
+          >
             {/* Floor contact shadow */}
             <div
               className="absolute -bottom-3 left-[8%] right-[8%] h-8"
