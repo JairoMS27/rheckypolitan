@@ -45,10 +45,9 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-/** Uniform Rheckypolitan magazine branding (all issues share the same spine). */
+/** Uniform Rheckypolitan magazine branding */
 const MAG = {
   bg: "#111111",
-  ink: "#ffffff",
   accent: "#B22234",
   edge: "#000000",
   paper: "#f4f0ea",
@@ -58,63 +57,78 @@ const STORY = [
   {
     kicker: "★ Colección",
     title: "El estante",
-    line: "Todas las revistas, listas en el lomo.",
+    line: "Las revistas, en fila, listas para salir.",
   },
   {
     kicker: "★ La mesa",
-    title: "Se despliegan",
-    line: "Salen del estante y caen en espiral.",
+    title: "En orden",
+    line: "Bajan una a una y se posan con calma.",
   },
   {
     kicker: "★ Archivo",
     title: "Elige un número",
-    line: "Clic en una revista para hojearla.",
+    line: "Clic en una portada para hojearla.",
   },
 ] as const;
 
-const SPINE_W = 42;
-const SPINE_H = 320;
-const COVER_W = 128;
-const COVER_H = 172;
-const SPINE_GAP = 10;
+const SPINE_W = 44;
+const SPINE_H = 300;
+const COVER_W = 118;
+const COVER_H = 158;
+const SPINE_GAP = 8;
+const TABLE_GAP_X = 18;
+const TABLE_GAP_Y = 16;
 
-function shelfPose(i: number, n: number, stageW: number, shelfY: number): Pose {
+function shelfPose(i: number, n: number, stageW: number, shelfTop: number): Pose {
   const total = n * SPINE_W + Math.max(0, n - 1) * SPINE_GAP;
   const start = (stageW - total) / 2;
   return {
     x: start + i * (SPINE_W + SPINE_GAP),
-    y: shelfY - SPINE_H,
+    y: shelfTop - SPINE_H,
     w: SPINE_W,
     h: SPINE_H,
     rot: 0,
-    z: i,
-  };
-}
-
-/** Archimedean-ish spiral on the table (flattened for screen). */
-function spiralPose(i: number, n: number, stageW: number, tableCy: number): Pose {
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  const angle = i * golden - Math.PI / 2;
-  // Radius grows so the stack reads as a spiral spread
-  const t = n <= 1 ? 0 : i / (n - 1);
-  const radius = 36 + t * Math.min(stageW * 0.34, 220);
-  const cx = stageW / 2;
-  const x = cx + Math.cos(angle) * radius - COVER_W / 2;
-  const y = tableCy + Math.sin(angle) * radius * 0.62 - COVER_H / 2;
-  const rot = ((angle * 180) / Math.PI) * 0.35 + (i % 3) * 4 - 4;
-  return {
-    x,
-    y,
-    w: COVER_W,
-    h: COVER_H,
-    rot,
-    z: 20 + i,
+    z: 10 + i,
   };
 }
 
 /**
- * El Estante — white cinematic shelf.
- * Magazines start on a large shelf; scroll pulls them onto a spiral table layout.
+ * Ordered table layout: neat centered grid, slight alternate tilt.
+ * Reads as magazines carefully laid out — not a messy pile.
+ */
+function tablePose(i: number, n: number, stageW: number, tableCenterY: number): Pose {
+  // Prefer a wide row; wrap only when needed
+  const maxCols = stageW < 640 ? 3 : stageW < 960 ? 4 : 5;
+  const cols = Math.min(n, maxCols);
+  const rows = Math.ceil(n / cols);
+  // Center incomplete last row
+  const row = Math.floor(i / cols);
+  const indexInRow = i % cols;
+  const itemsInRow = row === rows - 1 ? n - row * cols : cols;
+
+  const gridW = cols * COVER_W + (cols - 1) * TABLE_GAP_X;
+  const gridH = rows * COVER_H + (rows - 1) * TABLE_GAP_Y;
+  const rowW = itemsInRow * COVER_W + (itemsInRow - 1) * TABLE_GAP_X;
+
+  const originX = (stageW - gridW) / 2;
+  const originY = tableCenterY - gridH / 2;
+  const rowOriginX = originX + (gridW - rowW) / 2;
+
+  // Tiny ordered tilt (editorial, not chaotic)
+  const rot = indexInRow % 2 === 0 ? -1.8 : 1.8;
+
+  return {
+    x: rowOriginX + indexInRow * (COVER_W + TABLE_GAP_X),
+    y: originY + row * (COVER_H + TABLE_GAP_Y),
+    w: COVER_W,
+    h: COVER_H,
+    rot,
+    z: 30 + row * 10 + indexInRow,
+  };
+}
+
+/**
+ * El Estante — white cinematic shelf → ordered table layout.
  */
 export function MagazineShelf({ issues }: Props) {
   const [state, dispatch] = useReducer(
@@ -130,16 +144,16 @@ export function MagazineShelf({ issues }: Props) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const shelfBoardRef = useRef<HTMLDivElement>(null);
-  const tableRef = useRef<HTMLDivElement>(null);
+  const shelfUnitRef = useRef<HTMLDivElement>(null);
+  const tableUnitRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   const magRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const loadGen = useRef(0);
   const timers = useRef<number[]>([]);
   const storyIndexRef = useRef(0);
 
-  // Newest first on the shelf (left → right archive order by number desc)
-  const ordered = useMemo(() => [...issues].sort((a, b) => b.number - a.number), [issues]);
+  // Chronological order on shelf & table (N.º 01 → …)
+  const ordered = useMemo(() => [...issues].sort((a, b) => a.number - b.number), [issues]);
 
   const clearTimers = useCallback(() => {
     timers.current.forEach((id) => window.clearTimeout(id));
@@ -240,7 +254,7 @@ export function MagazineShelf({ issues }: Props) {
   }, [state.phase]);
 
   // ─────────────────────────────────────────────
-  // Scroll: shelf → spiral table
+  // Scroll: ordered shelf → ordered table grid
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!sectionRef.current || !pinRef.current || !stageRef.current || ordered.length === 0) {
@@ -256,10 +270,12 @@ export function MagazineShelf({ issues }: Props) {
       const stage = stageRef.current;
       const stageW = stage.clientWidth || 1000;
       const stageH = stage.clientHeight || 600;
-      const shelfY = stageH * 0.42;
-      const tableCy = stageH * 0.62;
       const n = ordered.length;
       const reduced = prefersReducedMotion();
+
+      // Geometry: shelf in upper third, table in lower half
+      const shelfTop = stageH * 0.38;
+      const tableCenterY = stageH * 0.68;
 
       const mags = ordered
         .map((issue) => {
@@ -270,31 +286,41 @@ export function MagazineShelf({ issues }: Props) {
 
       if (mags.length === 0) return;
 
-      // Position shelf board + table surface
-      if (shelfBoardRef.current) {
-        const total = n * SPINE_W + Math.max(0, n - 1) * SPINE_GAP;
-        const boardW = Math.min(stageW - 32, Math.max(total + 80, 320));
-        gsap.set(shelfBoardRef.current, {
-          left: (stageW - boardW) / 2,
-          top: shelfY,
-          width: boardW,
-        });
-      }
-      if (tableRef.current) {
-        const tw = Math.min(stageW * 0.88, 720);
-        const th = Math.min(stageH * 0.42, 340);
-        gsap.set(tableRef.current, {
-          left: (stageW - tw) / 2,
-          top: tableCy - th * 0.35,
-          width: tw,
-          height: th,
-          opacity: reduced ? 0.9 : 0,
+      // Size furniture to content
+      const shelfContentW = n * SPINE_W + Math.max(0, n - 1) * SPINE_GAP;
+      const shelfW = Math.min(stageW - 48, Math.max(shelfContentW + 100, 420));
+      const shelfH = 28;
+
+      if (shelfUnitRef.current) {
+        gsap.set(shelfUnitRef.current, {
+          left: (stageW - shelfW) / 2,
+          top: shelfTop - 4,
+          width: shelfW,
+          height: shelfH + 36,
         });
       }
 
-      // Initial shelf poses
+      const maxCols = stageW < 640 ? 3 : stageW < 960 ? 4 : 5;
+      const cols = Math.min(n, maxCols);
+      const rows = Math.ceil(n / cols);
+      const tableW = Math.min(
+        stageW - 40,
+        Math.max(cols * COVER_W + (cols - 1) * TABLE_GAP_X + 100, 380),
+      );
+      const tableH = Math.max(rows * COVER_H + (rows - 1) * TABLE_GAP_Y + 80, 220);
+
+      if (tableUnitRef.current) {
+        gsap.set(tableUnitRef.current, {
+          left: (stageW - tableW) / 2,
+          top: tableCenterY - tableH * 0.42,
+          width: tableW,
+          height: tableH,
+          opacity: reduced ? 1 : 0,
+        });
+      }
+
       mags.forEach(({ el }, i) => {
-        const from = shelfPose(i, n, stageW, shelfY);
+        const from = shelfPose(i, n, stageW, shelfTop);
         gsap.set(el, {
           left: from.x,
           top: from.y,
@@ -304,6 +330,7 @@ export function MagazineShelf({ issues }: Props) {
           zIndex: from.z,
           opacity: 1,
           force3D: true,
+          boxShadow: "2px 8px 16px rgba(0,0,0,0.2)",
         });
         const spine = el.querySelector<HTMLElement>("[data-face=spine]");
         const cover = el.querySelector<HTMLElement>("[data-face=cover]");
@@ -314,7 +341,7 @@ export function MagazineShelf({ issues }: Props) {
       ctx = gsap.context(() => {
         if (reduced) {
           mags.forEach(({ el }, i) => {
-            const to = spiralPose(i, n, stageW, tableCy);
+            const to = tablePose(i, n, stageW, tableCenterY);
             gsap.set(el, {
               left: to.x,
               top: to.y,
@@ -322,19 +349,21 @@ export function MagazineShelf({ issues }: Props) {
               height: to.h,
               rotation: to.rot,
               zIndex: to.z,
+              boxShadow: "0 14px 28px rgba(0,0,0,0.16)",
             });
             const spine = el.querySelector<HTMLElement>("[data-face=spine]");
             const cover = el.querySelector<HTMLElement>("[data-face=cover]");
             if (spine) gsap.set(spine, { opacity: 0 });
             if (cover) gsap.set(cover, { opacity: 1 });
           });
-          if (tableRef.current) gsap.set(tableRef.current, { opacity: 0.95 });
+          if (tableUnitRef.current) gsap.set(tableUnitRef.current, { opacity: 1 });
+          if (shelfUnitRef.current) gsap.set(shelfUnitRef.current, { opacity: 0.4 });
           setOnTable(true);
           setStoryIndex(2);
           return;
         }
 
-        const runway = Math.max(260, 200 + n * 40);
+        const runway = Math.max(280, 210 + n * 45);
 
         const tl = gsap.timeline({
           defaults: { ease: "none" },
@@ -343,7 +372,7 @@ export function MagazineShelf({ issues }: Props) {
             start: "top top",
             end: `+=${runway}%`,
             pin: pinRef.current,
-            scrub: 0.9,
+            scrub: 0.85,
             anticipatePin: 1,
             invalidateOnRefresh: true,
             onUpdate: (self) => {
@@ -351,97 +380,90 @@ export function MagazineShelf({ issues }: Props) {
               if (progressRef.current) {
                 progressRef.current.style.transform = `scaleX(${p})`;
               }
-              const next = p < 0.28 ? 0 : p < 0.68 ? 1 : 2;
+              const next = p < 0.25 ? 0 : p < 0.7 ? 1 : 2;
               if (next !== storyIndexRef.current) {
                 storyIndexRef.current = next;
                 setStoryIndex(next);
               }
               setOnTable((prev) => {
-                const nextOn = p > 0.55;
-                return prev === nextOn ? prev : nextOn;
+                const v = p > 0.58;
+                return prev === v ? prev : v;
               });
             },
           },
         });
 
-        // Table fades in mid-sequence
-        if (tableRef.current) {
-          tl.to(tableRef.current, { opacity: 0.95, duration: 0.25 }, 0.18);
+        // Table rises into view
+        if (tableUnitRef.current) {
+          gsap.set(tableUnitRef.current, { y: 40 });
+          tl.to(tableUnitRef.current, { opacity: 1, y: 0, duration: 0.2, ease: "power2.out" }, 0.1);
         }
 
-        // Each magazine leaves the shelf toward its spiral seat
+        // Magazines leave left → right in strict order
         mags.forEach(({ el }, i) => {
-          const from = shelfPose(i, n, stageW, shelfY);
-          const to = spiralPose(i, n, stageW, tableCy);
-          // Stagger departures left→right, then arc through air
-          const start = 0.12 + (i / Math.max(n, 1)) * 0.48;
-          const lift = start + 0.08;
-          const land = start + 0.22;
+          const from = shelfPose(i, n, stageW, shelfTop);
+          const to = tablePose(i, n, stageW, tableCenterY);
+          // Sequential stagger: each waits for previous to be mid-flight
+          const slot = 0.14 + (i / Math.max(n, 1)) * 0.52;
+          const liftT = slot;
+          const flyT = slot + 0.07;
+          const landT = slot + 0.2;
 
           const spine = el.querySelector<HTMLElement>("[data-face=spine]");
           const cover = el.querySelector<HTMLElement>("[data-face=cover]");
 
-          // Pull out / lift
+          // 1. Pull straight out from shelf (no random wobble)
           tl.to(
             el,
             {
-              top: from.y - 48 - (i % 3) * 8,
-              left: from.x + (i - n / 2) * 6,
-              rotation: i % 2 === 0 ? -8 : 8,
-              zIndex: 40 + i,
-              duration: 0.08,
-              ease: "power1.out",
+              top: from.y - 56,
+              left: from.x,
+              rotation: 0,
+              zIndex: 50 + i,
+              boxShadow: "0 22px 40px rgba(0,0,0,0.22)",
+              duration: 0.07,
+              ease: "power2.out",
             },
-            start,
+            liftT,
           );
 
-          // Morph to cover + spiral land
+          // 2. Transform to cover size while flying to grid seat
           tl.to(
             el,
             {
               left: to.x,
-              top: to.y,
+              top: to.y - 10,
               width: to.w,
               height: to.h,
-              rotation: to.rot,
-              zIndex: to.z,
-              duration: 0.2,
+              rotation: to.rot * 0.5,
+              zIndex: to.z + 20,
+              duration: 0.16,
               ease: "power2.inOut",
             },
-            lift,
+            flyT,
           );
 
-          if (spine) {
-            tl.to(spine, { opacity: 0, duration: 0.1 }, lift + 0.04);
-          }
-          if (cover) {
-            tl.to(cover, { opacity: 1, duration: 0.1 }, lift + 0.05);
-          }
+          if (spine) tl.to(spine, { opacity: 0, duration: 0.08 }, flyT + 0.03);
+          if (cover) tl.to(cover, { opacity: 1, duration: 0.08 }, flyT + 0.04);
 
-          // Soft settle
-          tl.to(
-            el,
-            {
-              top: to.y + 4,
-              duration: 0.04,
-              ease: "power1.in",
-            },
-            land,
-          );
+          // 3. Settle flat on the table, final rotation
           tl.to(
             el,
             {
               top: to.y,
-              duration: 0.05,
+              rotation: to.rot,
+              zIndex: to.z,
+              boxShadow: "0 12px 26px rgba(0,0,0,0.14), 0 2px 4px rgba(0,0,0,0.06)",
+              duration: 0.07,
               ease: "power2.out",
             },
-            land + 0.04,
+            landT,
           );
         });
 
-        // Shelf board recedes slightly once magazines leave
-        if (shelfBoardRef.current) {
-          tl.to(shelfBoardRef.current, { opacity: 0.35, y: -12, duration: 0.2 }, 0.55);
+        // Empty shelf fades back (still visible as furniture)
+        if (shelfUnitRef.current) {
+          tl.to(shelfUnitRef.current, { opacity: 0.45, y: -8, duration: 0.18 }, 0.55);
         }
       }, sectionRef);
 
@@ -490,29 +512,37 @@ export function MagazineShelf({ issues }: Props) {
       className="relative w-full bg-background"
       data-shelf-root
       data-shelf-phase={state.phase}
-      data-shelf-cinematic="spiral"
+      data-shelf-cinematic="table-grid"
     >
       <div
         ref={pinRef}
-        className="relative flex h-svh min-h-[620px] w-full flex-col overflow-hidden bg-background text-foreground"
+        className="relative flex h-svh min-h-[640px] w-full flex-col overflow-hidden bg-background text-foreground"
       >
-        {/* Subtle paper grain on white */}
+        {/* Soft studio light */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.035]"
+          className="pointer-events-none absolute inset-0"
           aria-hidden
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-            backgroundSize: "200px 200px",
+            background:
+              "radial-gradient(ellipse 80% 50% at 50% 20%, rgba(0,0,0,0.03), transparent 60%), linear-gradient(180deg, #fafafa 0%, #ffffff 40%, #f5f3ef 100%)",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.025]"
+          aria-hidden
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+            backgroundSize: "220px 220px",
           }}
         />
 
-        {/* Header copy */}
-        <div className="relative z-20 flex items-start justify-between gap-4 px-5 pt-8 md:px-12 md:pt-12">
+        {/* Header */}
+        <div className="relative z-20 flex items-start justify-between gap-4 px-5 pt-8 md:px-12 md:pt-11">
           <div className="min-w-0 max-w-2xl">
             <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#B22234]">
               {story.kicker}
             </p>
-            <h2 className="mt-2 font-display text-[clamp(2.75rem,8vw,5.75rem)] font-semibold leading-[0.92] tracking-tight">
+            <h2 className="mt-2 font-display text-[clamp(2.75rem,8vw,5.5rem)] font-semibold leading-[0.92] tracking-tight">
               {story.title}
             </h2>
             <p className="mt-3 max-w-md font-display text-lg italic leading-snug text-muted-foreground md:text-xl">
@@ -529,47 +559,195 @@ export function MagazineShelf({ issues }: Props) {
           </div>
         </div>
 
-        {/* Stage: shelf + table + magazines (absolute) */}
-        <div ref={stageRef} className="relative z-10 min-h-0 flex-1 w-full">
-          {/* Table surface (mesa) */}
+        {/* Stage */}
+        <div ref={stageRef} className="relative z-10 min-h-0 w-full flex-1">
+          {/* ─── Premium wall shelf ─── */}
           <div
-            ref={tableRef}
-            className="pointer-events-none absolute rounded-sm"
-            style={{
-              background: "linear-gradient(180deg, #ebe4d8 0%, #e0d6c6 40%, #d2c6b2 100%)",
-              boxShadow: "0 24px 48px rgba(40,30,15,0.12), inset 0 1px 0 rgba(255,255,255,0.55)",
-              transform: "perspective(900px) rotateX(58deg)",
-              transformOrigin: "50% 50%",
-            }}
+            ref={shelfUnitRef}
+            className="pointer-events-none absolute"
             aria-hidden
+            style={{ transformStyle: "preserve-3d" }}
           >
+            {/* Wall wash behind shelf */}
             <div
-              className="absolute inset-0 opacity-30"
+              className="absolute -inset-x-8 -top-16 bottom-2"
               style={{
-                backgroundImage:
-                  "repeating-linear-gradient(90deg, transparent, transparent 14px, rgba(90,60,30,0.04) 14px, rgba(90,60,30,0.04) 15px)",
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.02) 40%, transparent 100%)",
+              }}
+            />
+
+            {/* Metal brackets */}
+            <div
+              className="absolute bottom-7 left-6 h-10 w-2.5"
+              style={{
+                background: "linear-gradient(90deg, #9a9a9a 0%, #d0d0d0 40%, #8a8a8a 100%)",
+                boxShadow: "1px 2px 4px rgba(0,0,0,0.15)",
+                clipPath: "polygon(0 0, 100% 0, 100% 70%, 55% 100%, 0 100%)",
+              }}
+            />
+            <div
+              className="absolute bottom-7 right-6 h-10 w-2.5"
+              style={{
+                background: "linear-gradient(90deg, #9a9a9a 0%, #d0d0d0 40%, #8a8a8a 100%)",
+                boxShadow: "1px 2px 4px rgba(0,0,0,0.15)",
+                clipPath: "polygon(0 0, 100% 0, 100% 100%, 45% 100%, 0 70%)",
+              }}
+            />
+
+            {/* Thick oak plank */}
+            <div
+              className="absolute bottom-5 left-0 right-0 h-5 overflow-hidden"
+              style={{
+                background: `
+                  linear-gradient(180deg,
+                    #e8dcc8 0%,
+                    #d4c4a8 18%,
+                    #c4b08c 45%,
+                    #b09a78 72%,
+                    #9a8464 100%
+                  )
+                `,
+                boxShadow:
+                  "0 1px 0 rgba(255,255,255,0.45) inset, 0 -2px 0 rgba(0,0,0,0.12) inset, 0 10px 24px rgba(40,30,15,0.18)",
+                borderRadius: "1px",
+              }}
+            >
+              {/* Wood grain lines */}
+              <div
+                className="absolute inset-0 opacity-40"
+                style={{
+                  backgroundImage: `
+                    repeating-linear-gradient(
+                      90deg,
+                      transparent 0px,
+                      transparent 11px,
+                      rgba(80,55,30,0.07) 11px,
+                      rgba(80,55,30,0.07) 12px
+                    ),
+                    repeating-linear-gradient(
+                      0deg,
+                      transparent 0px,
+                      transparent 3px,
+                      rgba(255,255,255,0.04) 3px,
+                      rgba(255,255,255,0.04) 4px
+                    )
+                  `,
+                }}
+              />
+              {/* Top highlight edge */}
+              <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-white/50 to-transparent" />
+            </div>
+
+            {/* Front lip (depth) */}
+            <div
+              className="absolute bottom-2 left-0 right-0 h-3"
+              style={{
+                background: "linear-gradient(180deg, #a89070 0%, #8a7458 55%, #6e5a42 100%)",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+              }}
+            />
+
+            {/* Cast shadow under shelf */}
+            <div
+              className="absolute -bottom-1 left-4 right-4 h-4"
+              style={{
+                background: "radial-gradient(ellipse at 50% 0%, rgba(0,0,0,0.18), transparent 70%)",
+                filter: "blur(3px)",
               }}
             />
           </div>
 
-          {/* Shelf board */}
-          <div
-            ref={shelfBoardRef}
-            className="pointer-events-none absolute h-4 sm:h-5"
-            style={{
-              background: "linear-gradient(180deg, #d9cbb6 0%, #c4b49a 45%, #a89478 100%)",
-              boxShadow: "0 12px 28px rgba(60,40,20,0.16), inset 0 1px 0 rgba(255,255,255,0.6)",
-              transform: "perspective(800px) rotateX(12deg)",
-              transformOrigin: "50% 0%",
-            }}
-            aria-hidden
-          >
-            <div className="absolute inset-x-0 top-0 h-px bg-white/70" />
+          {/* ─── Premium table ─── */}
+          <div ref={tableUnitRef} className="pointer-events-none absolute" aria-hidden>
+            {/* Floor contact shadow */}
             <div
-              className="absolute -bottom-2 inset-x-[3%] h-2"
+              className="absolute -bottom-3 left-[8%] right-[8%] h-8"
               style={{
-                background: "linear-gradient(180deg, rgba(60,40,20,0.18), transparent)",
-                filter: "blur(2px)",
+                background:
+                  "radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.14), transparent 68%)",
+                filter: "blur(6px)",
+              }}
+            />
+
+            {/* Table top — walnut-ish editorial surface */}
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={{
+                borderRadius: "4px 4px 6px 6px",
+                background: `
+                  linear-gradient(165deg,
+                    #c4a882 0%,
+                    #b8956e 22%,
+                    #a67c52 48%,
+                    #8f6844 72%,
+                    #7a5738 100%
+                  )
+                `,
+                boxShadow: `
+                  0 1px 0 rgba(255,255,255,0.25) inset,
+                  0 -8px 16px rgba(0,0,0,0.12) inset,
+                  0 28px 50px rgba(40,25,10,0.18),
+                  0 8px 16px rgba(0,0,0,0.08)
+                `,
+                transform: "perspective(1200px) rotateX(52deg)",
+                transformOrigin: "50% 50%",
+              }}
+            >
+              {/* Grain */}
+              <div
+                className="absolute inset-0 opacity-50"
+                style={{
+                  backgroundImage: `
+                    repeating-linear-gradient(
+                      92deg,
+                      transparent 0px,
+                      transparent 18px,
+                      rgba(60,35,15,0.06) 18px,
+                      rgba(60,35,15,0.06) 19px
+                    ),
+                    repeating-linear-gradient(
+                      0deg,
+                      transparent 0px,
+                      transparent 5px,
+                      rgba(255,240,220,0.03) 5px,
+                      rgba(255,240,220,0.03) 6px
+                    )
+                  `,
+                }}
+              />
+              {/* Soft center highlight */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(ellipse 55% 40% at 50% 35%, rgba(255,255,255,0.14), transparent 70%)",
+                }}
+              />
+              {/* Edge rim */}
+              <div
+                className="absolute inset-x-0 bottom-0 h-2"
+                style={{
+                  background: "linear-gradient(180deg, transparent, rgba(0,0,0,0.25))",
+                }}
+              />
+              {/* Vignette corners */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  boxShadow: "inset 0 0 60px rgba(40,20,5,0.2)",
+                }}
+              />
+            </div>
+
+            {/* Front apron under table */}
+            <div
+              className="absolute bottom-0 left-[6%] right-[6%] h-3"
+              style={{
+                background: "linear-gradient(180deg, #6a4a30 0%, #4a3220 100%)",
+                borderRadius: "0 0 2px 2px",
+                boxShadow: "0 6px 14px rgba(0,0,0,0.2)",
+                opacity: 0.85,
               }}
             />
           </div>
@@ -599,7 +777,7 @@ export function MagazineShelf({ issues }: Props) {
                   "absolute overflow-hidden outline-none will-change-[left,top,width,height,transform]",
                   "focus-visible:ring-2 focus-visible:ring-[#B22234] focus-visible:ring-offset-2",
                   "disabled:cursor-default",
-                  "hover:brightness-105",
+                  "transition-[filter] duration-200 hover:brightness-[1.03]",
                   hidden ? "pointer-events-none !opacity-0" : "",
                 ].join(" ")}
                 style={{
@@ -607,93 +785,71 @@ export function MagazineShelf({ issues }: Props) {
                   top: 0,
                   width: SPINE_W,
                   height: SPINE_H,
-                  boxShadow: onTable
-                    ? "0 16px 32px rgba(0,0,0,0.18)"
-                    : "0 10px 22px rgba(0,0,0,0.22)",
+                  borderRadius: onTable ? 1 : 0,
                 }}
                 onClick={() => selectIssue(issue)}
               >
-                {/* Spine face — magazine lomo, same brand for all */}
+                {/* Spine */}
                 <span
                   data-face="spine"
                   className="absolute inset-0 flex flex-col"
                   style={{
-                    background: `linear-gradient(90deg, ${MAG.edge} 0%, ${MAG.bg} 14%, #1a1a1a 50%, ${MAG.bg} 86%, ${MAG.edge} 100%)`,
+                    background: `linear-gradient(90deg, ${MAG.edge} 0%, ${MAG.bg} 12%, #1c1c1c 50%, ${MAG.bg} 88%, ${MAG.edge} 100%)`,
                   }}
                 >
-                  {/* Top issue band */}
                   <span
-                    className="flex h-10 shrink-0 items-center justify-center"
+                    className="flex h-11 shrink-0 items-center justify-center"
                     style={{ background: MAG.accent }}
                   >
                     <span
-                      className="font-mono text-[11px] font-bold tabular-nums text-white"
-                      style={{
-                        writingMode: "vertical-rl",
-                        transform: "rotate(180deg)",
-                      }}
+                      className="font-mono text-[12px] font-bold tabular-nums text-white"
+                      style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
                     >
                       {num}
                     </span>
                   </span>
-
-                  {/* Brand + title stack */}
                   <span className="flex min-h-0 flex-1 flex-col items-center justify-between px-0.5 py-3">
                     <span
-                      className="font-mono text-[8px] font-bold uppercase tracking-[0.2em] text-white/90"
-                      style={{
-                        writingMode: "vertical-rl",
-                        transform: "rotate(180deg)",
-                        letterSpacing: "0.18em",
-                      }}
+                      className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-white/90"
+                      style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
                     >
                       RHECKYPOLITAN
                     </span>
                     <span
-                      className="max-h-[48%] overflow-hidden font-display text-[11px] leading-none text-white/85"
-                      style={{
-                        writingMode: "vertical-rl",
-                        transform: "rotate(180deg)",
-                      }}
+                      className="max-h-[46%] overflow-hidden font-display text-[11px] leading-none text-white/85"
+                      style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
                       title={issue.title}
                     >
                       {issue.title}
                     </span>
                     <span
-                      className="font-mono text-[7px] uppercase tracking-widest text-white/45"
-                      style={{
-                        writingMode: "vertical-rl",
-                        transform: "rotate(180deg)",
-                      }}
+                      className="font-mono text-[7px] uppercase tracking-widest text-white/40"
+                      style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
                     >
                       REVISTA
                     </span>
                   </span>
-
-                  {/* Bottom red strip */}
-                  <span className="h-3 shrink-0" style={{ background: MAG.accent }} />
-
-                  {/* Gloss */}
+                  <span className="h-2.5 shrink-0" style={{ background: MAG.accent }} />
                   <span
-                    className="pointer-events-none absolute inset-y-0 left-0 w-1/3"
+                    className="pointer-events-none absolute inset-y-0 left-0 w-[32%]"
                     style={{
-                      background: "linear-gradient(90deg, rgba(255,255,255,0.12), transparent)",
+                      background: "linear-gradient(90deg, rgba(255,255,255,0.13), transparent)",
                     }}
                   />
-                  {/* Thin paper edge (magazine pages) */}
                   <span
-                    className="pointer-events-none absolute top-[8%] -right-[3px] bottom-[8%] w-[3px]"
+                    className="pointer-events-none absolute top-[7%] -right-[3px] bottom-[7%] w-[3px]"
                     style={{
                       background: `linear-gradient(180deg, ${MAG.paper}, #e8e0d4 50%, #d4c9b8)`,
-                      boxShadow: "1px 0 2px rgba(0,0,0,0.15)",
+                      boxShadow: "1px 0 2px rgba(0,0,0,0.12)",
                     }}
                   />
                 </span>
 
-                {/* Cover face — shown on the table */}
+                {/* Cover */}
                 <span
                   data-face="cover"
                   className="absolute inset-0 flex flex-col bg-foreground opacity-0"
+                  style={{ border: "1px solid rgba(0,0,0,0.08)" }}
                 >
                   {cover ? (
                     <img
@@ -715,7 +871,7 @@ export function MagazineShelf({ issues }: Props) {
                       </span>
                     </span>
                   )}
-                  <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 pt-8">
+                  <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-2 pt-8">
                     <span className="font-mono text-[9px] font-bold tabular-nums text-white">
                       N.º {num}
                     </span>
@@ -723,7 +879,7 @@ export function MagazineShelf({ issues }: Props) {
                   <span
                     className="pointer-events-none absolute inset-y-0 left-0 w-1/4"
                     style={{
-                      background: "linear-gradient(90deg, rgba(255,255,255,0.14), transparent)",
+                      background: "linear-gradient(90deg, rgba(255,255,255,0.12), transparent)",
                     }}
                   />
                 </span>
@@ -738,8 +894,8 @@ export function MagazineShelf({ issues }: Props) {
             <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-muted-foreground">
               {state.phase === "idle"
                 ? onTable
-                  ? "Sobre la mesa · clic para abrir"
-                  : "Scroll · las revistas salen del estante"
+                  ? "En la mesa · clic para abrir"
+                  : "Scroll · salen en orden hacia la mesa"
                 : state.phase === "exiting"
                   ? "Sacando…"
                   : state.phase === "opening"
